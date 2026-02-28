@@ -100,6 +100,7 @@ impl Render for ScanStatus {
                             FOLDER_CHECK
                         }
                         ScanEvent::Cleaning
+                        | ScanEvent::PlaylistsUpdated(_)
                         | ScanEvent::ScanProgress { .. }
                         | ScanEvent::WaitingForMissingFolderDecision { .. } => FOLDER_SEARCH,
                     })
@@ -129,6 +130,7 @@ impl Render for ScanStatus {
                     }
                 }
                 ScanEvent::Cleaning => SharedString::from(""),
+                ScanEvent::PlaylistsUpdated(_) => SharedString::from(""),
                 ScanEvent::WaitingForMissingFolderDecision { .. } => {
                     tr!("SCANNING_MISSING_DIALOG_TITLE").into()
                 }

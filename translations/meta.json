@@ -535,49 +535,49 @@
   },
   "SCANNING_MISSING_DIALOG_BODY": {
     "context": "missing_folder_dialog.rs",
-    "definedIn": "src/ui/library/missing_folder_dialog.rs:178",
+    "definedIn": "src/ui/library/missing_folder_dialog.rs:172",
     "plural": false,
     "description": null
   },
   "SCANNING_MISSING_DIALOG_DELETE": {
     "context": "missing_folder_dialog.rs",
-    "definedIn": "src/ui/library/missing_folder_dialog.rs:250",
+    "definedIn": "src/ui/library/missing_folder_dialog.rs:244",
     "plural": false,
     "description": null
   },
   "SCANNING_MISSING_DIALOG_DELETE_SUBTITLE": {
     "context": "missing_folder_dialog.rs",
-    "definedIn": "src/ui/library/missing_folder_dialog.rs:252",
+    "definedIn": "src/ui/library/missing_folder_dialog.rs:246",
     "plural": false,
     "description": null
   },
   "SCANNING_MISSING_DIALOG_DONT_ASK_AGAIN": {
     "context": "missing_folder_dialog.rs",
-    "definedIn": "src/ui/library/missing_folder_dialog.rs:285",
+    "definedIn": "src/ui/library/missing_folder_dialog.rs:279",
     "plural": false,
     "description": null
   },
   "SCANNING_MISSING_DIALOG_DONT_ASK_HINT": {
     "context": "missing_folder_dialog.rs",
-    "definedIn": "src/ui/library/missing_folder_dialog.rs:296",
+    "definedIn": "src/ui/library/missing_folder_dialog.rs:290",
     "plural": false,
     "description": null
   },
   "SCANNING_MISSING_DIALOG_KEEP": {
     "context": "missing_folder_dialog.rs",
-    "definedIn": "src/ui/library/missing_folder_dialog.rs:234",
+    "definedIn": "src/ui/library/missing_folder_dialog.rs:228",
     "plural": false,
     "description": null
   },
   "SCANNING_MISSING_DIALOG_KEEP_SUBTITLE": {
     "context": "missing_folder_dialog.rs",
-    "definedIn": "src/ui/library/missing_folder_dialog.rs:236",
+    "definedIn": "src/ui/library/missing_folder_dialog.rs:230",
     "plural": false,
     "description": null
   },
   "SCANNING_MISSING_DIALOG_TITLE": {
     "context": "missing_folder_dialog.rs",
-    "definedIn": "src/ui/library/missing_folder_dialog.rs:160",
+    "definedIn": "src/ui/library/missing_folder_dialog.rs:154",
     "plural": false,
     "description": null
   },
@@ -643,19 +643,19 @@
   },
   "SCAN_COMPLETE_WATCHING": {
     "context": "header.rs",
-    "definedIn": "src/ui/header.rs:136",
+    "definedIn": "src/ui/header.rs:138",
     "plural": false,
     "description": null
   },
   "SCAN_PROGRESS_DISCOVERING": {
     "context": "header.rs",
-    "definedIn": "src/ui/header.rs:116",
+    "definedIn": "src/ui/header.rs:117",
     "plural": false,
     "description": null
   },
   "SCAN_PROGRESS_SCANNING": {
     "context": "header.rs",
-    "definedIn": "src/ui/header.rs:124",
+    "definedIn": "src/ui/header.rs:125",
     "plural": false,
     "description": null
   },

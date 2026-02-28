@@ -1,4 +1,3 @@
-use camino::Utf8PathBuf;
 use cntp_i18n::tr;
 use gpui::{
     App, AppContext, ClickEvent, Context, Entity, InteractiveElement, IntoElement, ParentElement,
@@ -16,6 +15,7 @@ use crate::{
             icons::{ALERT_CIRCLE, FOLDER_CHECK, FOLDER_X, TRASH, icon},
             modal,
         },
+        models::Models,
         theme::Theme,
     },
 };
@@ -69,23 +69,14 @@ fn action_button(
 }
 
 pub struct MissingFolderDialog {
-    paths: Vec<Utf8PathBuf>,
     remember_choice: bool,
 }
 
 impl MissingFolderDialog {
     pub fn new(cx: &mut App) -> Entity<Self> {
         cx.new(|_| Self {
-            paths: Vec::new(),
             remember_choice: false,
         })
-    }
-
-    pub fn set_paths(&mut self, paths: Vec<Utf8PathBuf>, _cx: &mut App) {
-        if self.paths != paths {
-            self.paths = paths;
-            self.remember_choice = false;
-        }
     }
 
     fn maybe_persist_policy(&mut self, action: MissingFolderAction, cx: &mut Context<Self>) {
@@ -109,7 +100,6 @@ impl MissingFolderDialog {
     fn resolve_action(&mut self, action: MissingFolderAction, cx: &mut Context<Self>) {
         self.maybe_persist_policy(action, cx);
         cx.global::<ScanInterface>().resolve_missing_folders(action);
-        self.paths.clear();
         cx.notify();
     }
 }
@@ -117,6 +107,10 @@ impl MissingFolderDialog {
 impl Render for MissingFolderDialog {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
+        let paths = match cx.global::<Models>().scan_state.read(cx).clone() {
+            crate::library::scan::ScanEvent::WaitingForMissingFolderDecision { paths } => paths,
+            _ => Vec::new(),
+        };
 
         modal::modal().child(
             div()
@@ -193,7 +187,7 @@ impl Render for MissingFolderDialog {
                                 .flex()
                                 .flex_col()
                                 .gap(px(4.0))
-                                .children(self.paths.iter().enumerate().map(|(idx, path)| {
+                                .children(paths.iter().enumerate().map(|(idx, path)| {
                                     div()
                                         .id(format!("missing-folder-path-{idx}"))
                                         .flex()

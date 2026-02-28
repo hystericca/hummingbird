@@ -30,7 +30,10 @@ use crate::{
         record::{SCAN_VERSION, ScanRecord, load_scan_record, write_scan_record},
     },
     settings::scan::{MissingFolderPolicy, ScanSettings},
-    ui::{app::get_dirs, models::Models},
+    ui::{
+        app::get_dirs,
+        models::{Models, PlaylistEvent},
+    },
 };
 
 /// Maximum number of items to accumulate before flushing a DB transaction.
@@ -39,6 +42,7 @@ const BATCH_SIZE: usize = 50;
 #[derive(Debug, PartialEq, Clone)]
 pub enum ScanEvent {
     Cleaning,
+    PlaylistsUpdated(Vec<i64>),
     WaitingForMissingFolderDecision { paths: Vec<Utf8PathBuf> },
     ScanProgress { current: u64, total: u64 },
     ScanCompleteWatching,
@@ -112,6 +116,7 @@ impl ScanInterface {
         std::mem::swap(&mut self.events_rx, &mut events_rx);
 
         let state_model = cx.global::<Models>().scan_state.clone();
+        let playlist_tracker = cx.global::<Models>().playlist_tracker.clone();
 
         let Some(mut events_rx) = events_rx else {
             return;
@@ -119,6 +124,17 @@ impl ScanInterface {
         cx.spawn(async move |cx| {
             loop {
                 while let Some(event) = events_rx.recv().await {
+                    if let ScanEvent::PlaylistsUpdated(playlist_ids) = event {
+                        if !playlist_ids.is_empty() {
+                            playlist_tracker.update(cx, |_, cx| {
+                                for playlist_id in playlist_ids {
+                                    cx.emit(PlaylistEvent::PlaylistUpdated(playlist_id));
+                                }
+                            });
+                        }
+                        continue;
+                    }
+
                     state_model.update(cx, |m, cx| {
                         *m = event;
                         cx.notify()
@@ -293,8 +309,16 @@ async fn run_scanner(
 
         let _ = event_tx.send(ScanEvent::Cleaning);
 
-        cleanup_removed_directories(&pool, &mut scan_record, &scan_settings.paths).await;
-        cleanup_with_exclusions(&pool, &mut scan_record, &excluded_missing_roots).await;
+        let mut updated_playlists =
+            cleanup_removed_directories(&pool, &mut scan_record, &scan_settings.paths).await;
+        updated_playlists.extend(
+            cleanup_with_exclusions(&pool, &mut scan_record, &excluded_missing_roots).await,
+        );
+        if !updated_playlists.is_empty() {
+            let _ = event_tx.send(ScanEvent::PlaylistsUpdated(
+                updated_playlists.into_iter().collect(),
+            ));
+        }
 
         scan_record.directories = scan_settings.paths.clone();
 

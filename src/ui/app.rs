@@ -27,8 +27,8 @@ use crate::{
         caching::HummingbirdImageCache,
         command_palette::{CommandPalette, CommandPaletteHolder},
         components::dropdown,
-        library::missing_folder_dialog::MissingFolderDialog,
         library,
+        library::missing_folder_dialog::MissingFolderDialog,
     },
 };
 
@@ -55,7 +55,7 @@ struct WindowShadow {
     pub search: Entity<SearchView>,
     pub show_queue: Entity<bool>,
     pub show_about: Entity<bool>,
-    pub missing_folder_remember: Entity<bool>,
+    pub missing_folder_dialog: Entity<MissingFolderDialog>,
     pub palette: Entity<CommandPalette>,
     pub image_cache: Entity<HummingbirdImageCache>,
 }
@@ -64,13 +64,11 @@ impl Render for WindowShadow {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let queue = self.queue.clone();
         let show_about = *self.show_about.clone().read(cx);
-        let missing_folder_remember = self.missing_folder_remember.clone();
-        let remember_checked = *missing_folder_remember.read(cx);
         let scan_state = cx.global::<Models>().scan_state.read(cx).clone();
-        let missing_paths = match scan_state {
-            ScanEvent::WaitingForMissingFolderDecision { paths } => Some(paths),
-            _ => None,
-        };
+        let show_missing_folder_dialog = matches!(
+            scan_state,
+            ScanEvent::WaitingForMissingFolderDecision { .. }
+        );
 
         div()
             .image_cache(self.image_cache.clone())
@@ -116,12 +114,8 @@ impl Render for WindowShadow {
                             show_about.write(cx, false);
                         }))
                     })
-                    .when_some(missing_paths, |this, paths| {
-                        this.child(missing_folder_dialog(
-                            paths,
-                            missing_folder_remember,
-                            remember_checked,
-                        ))
+                    .when(show_missing_folder_dialog, |this| {
+                        this.child(self.missing_folder_dialog.clone())
                     }),
             ))
     }
@@ -345,7 +339,6 @@ pub fn run() -> anyhow::Result<()> {
 
                         let show_queue = cx.new(|_| true);
                         let show_about = cx.global::<Models>().show_about.clone();
-                        let missing_folder_remember = cx.new(|_| false);
 
                         cx.observe(&show_about, |_, _, cx| {
                             cx.notify();
@@ -360,7 +353,7 @@ pub fn run() -> anyhow::Result<()> {
                             search: SearchView::new(cx),
                             show_queue,
                             show_about,
-                            missing_folder_remember,
+                            missing_folder_dialog: MissingFolderDialog::new(cx),
                             palette,
                             // use a really small global image cache
                             // this is literally just to ensure that images are *always* removed

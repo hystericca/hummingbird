@@ -63,14 +63,15 @@ pub async fn cleanup_removed_directories(
     pool: &SqlitePool,
     scan_record: &mut ScanRecord,
     current_directories: &[Utf8PathBuf],
-) {
+) -> FxHashSet<i64> {
+    let mut updated_playlists: FxHashSet<i64> = FxHashSet::default();
     let current_set: FxHashSet<Utf8PathBuf> = current_directories.iter().cloned().collect();
     let old_set: FxHashSet<Utf8PathBuf> = scan_record.directories.iter().cloned().collect();
 
     let removed_dirs: Vec<Utf8PathBuf> = old_set.difference(&current_set).cloned().collect();
 
     if removed_dirs.is_empty() {
-        return;
+        return updated_playlists;
     }
 
     info!(
@@ -82,7 +83,7 @@ pub async fn cleanup_removed_directories(
         Ok(tx) => tx,
         Err(e) => {
             error!("Could not begin directory cleanup transaction: {:?}", e);
-            return;
+            return updated_playlists;
         }
     };
 
@@ -100,12 +101,41 @@ pub async fn cleanup_removed_directories(
     let mut deleted: Vec<Utf8PathBuf> = Vec::with_capacity(to_remove.len());
     for path in &to_remove {
         debug!("removing track from removed directory: {:?}", path);
-        let result = sqlx::query(include_str!("../../../queries/scan/delete_track.sql"))
+        let affected_playlists = sqlx::query_scalar::<_, i64>(include_str!(
+            "../../../queries/scan/list_playlist_ids_for_track.sql"
+        ))
+        .bind(path.as_str())
+        .fetch_all(&mut *tx)
+        .await;
+
+        let affected_playlists = match affected_playlists {
+            Ok(ids) => ids,
+            Err(e) => {
+                error!(
+                    "Database error while listing affected playlists for track cleanup: {:?}",
+                    e
+                );
+                continue;
+            }
+        };
+
+        let playlist_result = sqlx::query(include_str!("../../../queries/scan/delete_playlist_items_for_track.sql"))
             .bind(path.as_str())
             .execute(&mut *tx)
             .await;
 
-        if let Err(e) = result {
+        if let Err(e) = playlist_result {
+            error!("Database error while deleting playlist items for track: {:?}", e);
+            continue;
+        }
+        updated_playlists.extend(affected_playlists);
+
+        let track_result = sqlx::query(include_str!("../../../queries/scan/delete_track.sql"))
+            .bind(path.as_str())
+            .execute(&mut *tx)
+            .await;
+
+        if let Err(e) = track_result {
             error!("Database error while deleting track: {:?}", e);
         } else {
             deleted.push(path.clone());
@@ -114,7 +144,7 @@ pub async fn cleanup_removed_directories(
 
     if let Err(e) = tx.commit().await {
         error!("Failed to commit directory cleanup transaction: {:?}", e);
-        return;
+        return FxHashSet::default();
     }
 
     for path in &deleted {
@@ -125,6 +155,8 @@ pub async fn cleanup_removed_directories(
         "Cleaned up {} track(s) from removed directories",
         deleted.len()
     );
+
+    updated_playlists
 }
 
 /// Remove scan_record entries whose files no longer exist on disk, and delete the corresponding
@@ -133,7 +165,8 @@ pub async fn cleanup_with_exclusions(
     pool: &SqlitePool,
     scan_record: &mut ScanRecord,
     excluded_roots: &[Utf8PathBuf],
-) {
+) -> FxHashSet<i64> {
+    let mut updated_playlists: FxHashSet<i64> = FxHashSet::default();
     let to_delete: Vec<Utf8PathBuf> = scan_record
         .records
         .keys()
@@ -150,19 +183,48 @@ pub async fn cleanup_with_exclusions(
         Ok(tx) => tx,
         Err(e) => {
             error!("Could not begin cleanup transaction: {:?}", e);
-            return;
+            return updated_playlists;
         }
     };
 
     let mut deleted: Vec<Utf8PathBuf> = Vec::with_capacity(to_delete.len());
     for path in &to_delete {
         debug!("track deleted or moved: {:?}", path);
-        let result = sqlx::query(include_str!("../../../queries/scan/delete_track.sql"))
+        let affected_playlists = sqlx::query_scalar::<_, i64>(include_str!(
+            "../../../queries/scan/list_playlist_ids_for_track.sql"
+        ))
+        .bind(path.as_str())
+        .fetch_all(&mut *tx)
+        .await;
+
+        let affected_playlists = match affected_playlists {
+            Ok(ids) => ids,
+            Err(e) => {
+                error!(
+                    "Database error while listing affected playlists for track cleanup: {:?}",
+                    e
+                );
+                continue;
+            }
+        };
+
+        let playlist_result = sqlx::query(include_str!("../../../queries/scan/delete_playlist_items_for_track.sql"))
             .bind(path.as_str())
             .execute(&mut *tx)
             .await;
 
-        if let Err(e) = result {
+        if let Err(e) = playlist_result {
+            error!("Database error while deleting playlist items for track: {:?}", e);
+            continue;
+        }
+        updated_playlists.extend(affected_playlists);
+
+        let track_result = sqlx::query(include_str!("../../../queries/scan/delete_track.sql"))
+            .bind(path.as_str())
+            .execute(&mut *tx)
+            .await;
+
+        if let Err(e) = track_result {
             error!("Database error while deleting track: {:?}", e);
         } else {
             deleted.push(path.clone());
@@ -171,12 +233,14 @@ pub async fn cleanup_with_exclusions(
 
     if let Err(e) = tx.commit().await {
         error!("Failed to commit cleanup transaction: {:?}", e);
-        return;
+        return FxHashSet::default();
     }
 
     for path in &deleted {
         scan_record.records.remove(path);
     }
+
+    updated_playlists
 }
 /// Performs a full recursive directory walk, streaming discovered file paths through `path_tx`
 /// as they are found so that downstream pipeline stages can begin processing immediately.
