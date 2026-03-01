@@ -252,8 +252,12 @@ pub async fn update_metadata(
 
     let artist_id = insert_artist(conn, metadata, artist_cache).await?;
 
-    let album_image = if metadata.track_current == Some(1)
-        && (metadata.disc_current == Some(1) || metadata.disc_current == None)
+    let album_image = if (metadata.track_current == Some(1)
+        || metadata.track_current == Some(0)
+        || metadata.track_current == None)
+        && (metadata.disc_current == Some(1)
+            || metadata.disc_current == None
+            || metadata.disc_current == Some(0))
     {
         image
     } else {
