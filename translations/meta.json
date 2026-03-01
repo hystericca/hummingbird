@@ -139,19 +139,19 @@
   },
   "ADD_TO_PLAYLIST": {
     "context": "track_item.rs",
-    "definedIn": "src/ui/library/track_listing/track_item.rs:413",
+    "definedIn": "src/ui/library/track_listing/track_item.rs:402",
     "plural": false,
     "description": null
   },
   "ADD_TO_QUEUE": {
     "context": "track_item.rs",
-    "definedIn": "src/ui/library/track_listing/track_item.rs:394",
+    "definedIn": "src/ui/library/track_listing/track_item.rs:383",
     "plural": false,
     "description": null
   },
   "ADD_TO_SELECTED_PLAYLIST": {
     "context": "add_to_playlist.rs",
-    "definedIn": "src/ui/library/add_to_playlist.rs:33",
+    "definedIn": "src/ui/library/add_to_playlist.rs:38",
     "plural": false,
     "description": null
   },
@@ -451,7 +451,7 @@
   },
   "PLAY_FROM_HERE": {
     "context": "track_item.rs",
-    "definedIn": "src/ui/library/track_listing/track_item.rs:382",
+    "definedIn": "src/ui/library/track_listing/track_item.rs:371",
     "plural": false,
     "description": null
   },
@@ -481,7 +481,7 @@
   },
   "REMOVE_FROM_PLAYLIST": {
     "context": "track_item.rs",
-    "definedIn": "src/ui/library/track_listing/track_item.rs:427",
+    "definedIn": "src/ui/library/track_listing/track_item.rs:417",
     "plural": false,
     "description": null
   },
@@ -493,7 +493,7 @@
   },
   "REMOVE_FROM_SELECTED_PLAYLIST": {
     "context": "add_to_playlist.rs",
-    "definedIn": "src/ui/library/add_to_playlist.rs:40",
+    "definedIn": "src/ui/library/add_to_playlist.rs:45",
     "plural": false,
     "description": null
   },
@@ -757,7 +757,7 @@
   },
   "TRACK_DISC": {
     "context": "track_item.rs",
-    "definedIn": "src/ui/library/track_listing/track_item.rs:192",
+    "definedIn": "src/ui/library/track_listing/track_item.rs:196",
     "plural": false,
     "description": null
   },
@@ -769,7 +769,7 @@
   },
   "TRACK_SIDE": {
     "context": "track_item.rs",
-    "definedIn": "src/ui/library/track_listing/track_item.rs:190",
+    "definedIn": "src/ui/library/track_listing/track_item.rs:194",
     "plural": false,
     "description": null
   },

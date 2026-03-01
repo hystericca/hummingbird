@@ -6,10 +6,15 @@ use gpui::{
     Window, anchored, div, px,
 };
 use nucleo::Utf32String;
+use tracing::error;
 
 use crate::{
-    library::{db::LibraryAccess, types::PlaylistWithCount},
+    library::{
+        db::{self, LibraryAccess},
+        types::PlaylistWithCount,
+    },
     ui::{
+        app::Pool,
         components::{
             icons::PLAYLIST_ADD,
             modal::modal,
@@ -89,17 +94,39 @@ impl AddToPlaylist {
                     .ok()
                     .flatten();
 
-                if let Some(id) = has_track {
-                    cx.remove_playlist_item(id).unwrap();
-                } else {
-                    cx.add_playlist_item(playlist.1.id, track_id).unwrap();
-                }
-
+                let pool = cx.global::<Pool>().0.clone();
                 let playlist_tracker = cx.global::<Models>().playlist_tracker.clone();
+                let playlist_id = playlist.1.id;
 
-                playlist_tracker.update(cx, |_, cx| {
-                    cx.emit(PlaylistEvent::PlaylistUpdated(playlist.1.id));
-                });
+                cx.spawn(async move |cx| {
+                    let task = if let Some(id) = has_track {
+                        crate::RUNTIME
+                            .spawn(async move { db::remove_playlist_item(&pool, id).await })
+                    } else {
+                        crate::RUNTIME.spawn(async move {
+                            db::add_playlist_item(&pool, playlist_id, track_id)
+                                .await
+                                .map(|_| ())
+                        })
+                    };
+
+                    match task.await {
+                        Ok(Ok(())) => {}
+                        Ok(Err(err)) => {
+                            error!("could not remove/add track from playlist: {err:?}");
+                            return;
+                        }
+                        Err(err) => {
+                            error!("remove/add from playlist task panicked: {err:?}");
+                            return;
+                        }
+                    }
+
+                    let _ = playlist_tracker.update(cx, |_, cx| {
+                        cx.emit(PlaylistEvent::PlaylistUpdated(playlist_id));
+                    });
+                })
+                .detach();
 
                 show_clone.write(cx, false);
             });
@@ -130,13 +157,36 @@ impl AddToPlaylist {
                     middle: display.into(),
                     right: None,
                     on_accept: Arc::new(move |cx| {
-                        let playlist_id = cx.create_playlist(&name_string).unwrap();
-                        cx.add_playlist_item(playlist_id, track_id).unwrap();
-
+                        let pool = cx.global::<Pool>().0.clone();
                         let playlist_tracker = cx.global::<Models>().playlist_tracker.clone();
-                        playlist_tracker.update(cx, |_, cx| {
-                            cx.emit(PlaylistEvent::PlaylistUpdated(playlist_id));
-                        });
+                        let name_string = name_string.clone();
+
+                        cx.spawn(async move |cx| {
+                            let task = crate::RUNTIME.spawn(async move {
+                                let playlist_id = db::create_playlist(&pool, &name_string).await?;
+                                db::add_playlist_item(&pool, playlist_id, track_id).await?;
+                                Ok::<i64, sqlx::Error>(playlist_id)
+                            });
+
+                            let playlist_id = match task.await {
+                                Ok(Ok(id)) => id,
+                                Ok(Err(err)) => {
+                                    tracing::error!(
+                                        "could not create playlist and add track: {err:?}"
+                                    );
+                                    return;
+                                }
+                                Err(err) => {
+                                    tracing::error!("create playlist task panicked: {err:?}");
+                                    return;
+                                }
+                            };
+
+                            let _ = playlist_tracker.update(cx, |_, cx| {
+                                cx.emit(PlaylistEvent::PlaylistUpdated(playlist_id));
+                            });
+                        })
+                        .detach();
 
                         show_clone2.write(cx, false);
                     }),

@@ -1,8 +1,8 @@
 use cntp_i18n::tr;
 use gpui::prelude::{FluentBuilder, *};
 use gpui::{
-    App, Entity, FontWeight, IntoElement, Pixels, SharedString, TextAlign, TextRun, Window, div,
-    img, px,
+    App, AsyncApp, Entity, FontWeight, IntoElement, Pixels, SharedString, TextAlign, TextRun,
+    Window, div, img, px,
 };
 use std::path::Path;
 
@@ -14,12 +14,16 @@ use crate::ui::components::menu::menu_separator;
 use crate::ui::library::add_to_playlist::AddToPlaylist;
 use crate::ui::models::PlaylistEvent;
 use crate::{
-    library::{db::LibraryAccess, types::Track},
+    library::{
+        db::{self, LibraryAccess},
+        types::Track,
+    },
     playback::{
         interface::{PlaybackInterface, replace_queue},
         queue::QueueItemData,
     },
     ui::{
+        app::Pool,
         availability::is_track_available,
         components::{
             context::context,
@@ -301,27 +305,12 @@ impl Render for TrackItem {
                                         .on_click(
                                             cx.listener(move |this, _, _, cx| {
                                                 cx.stop_propagation();
-
-                                                if let Some(id) = this.is_liked {
-                                                    cx.remove_playlist_item(id)
-                                                        .expect("could not unlike song");
-
+                                                let is_liked = this.is_liked;
+                                                let entity = cx.entity().clone();
+                                                if is_liked.is_some() {
                                                     this.is_liked = None;
-                                                } else {
-                                                    this.is_liked = Some(
-                                                        cx.add_playlist_item(1, track_id)
-                                                            .expect("could not like song"),
-                                                    );
                                                 }
-
-                                                let playlist_tracker =
-                                                    cx.global::<Models>().playlist_tracker.clone();
-
-                                                playlist_tracker.update(cx, |_, cx| {
-                                                    cx.emit(PlaylistEvent::PlaylistUpdated(1));
-                                                });
-
-                                                cx.notify();
+                                                toggle_like(is_liked, track_id, entity, cx);
                                             }),
                                         )
                                     }),
@@ -419,6 +408,7 @@ impl Render for TrackItem {
                             let playlist_id = info.id;
                             let item_id = info.item_id;
                             let playlist_tracker = cx.global::<Models>().playlist_tracker.clone();
+                            let pool = cx.global::<Pool>().0.clone();
 
                             menu.item(
                                 menu_item(
@@ -426,10 +416,13 @@ impl Render for TrackItem {
                                     Some(PLAYLIST_REMOVE),
                                     tr!("REMOVE_FROM_PLAYLIST", "Remove from playlist"),
                                     move |_, _, cx| {
-                                        cx.remove_playlist_item(item_id).unwrap();
-                                        playlist_tracker.update(cx, |_, cx| {
-                                            cx.emit(PlaylistEvent::PlaylistUpdated(playlist_id));
-                                        })
+                                        remove_from_playlist(
+                                            item_id,
+                                            playlist_id,
+                                            pool.clone(),
+                                            playlist_tracker.clone(),
+                                            cx,
+                                        );
                                     },
                                 )
                                 .disabled(!is_available),
@@ -438,6 +431,122 @@ impl Render for TrackItem {
                 ),
             )
     }
+}
+
+fn toggle_like(
+    is_liked: Option<i64>,
+    track_id: i64,
+    entity: Entity<TrackItem>,
+    cx: &mut Context<TrackItem>,
+) {
+    let pool = cx.global::<Pool>().0.clone();
+    let playlist_tracker = cx.global::<Models>().playlist_tracker.clone();
+
+    if let Some(item_id) = is_liked {
+        // Optimistically clear liked state
+        cx.notify();
+
+        cx.spawn(async move |_, cx| {
+            unlike_track(item_id, entity, playlist_tracker, pool, cx).await;
+        })
+        .detach();
+    } else {
+        cx.spawn(async move |_, cx| {
+            like_track(track_id, entity, playlist_tracker, pool, cx).await;
+        })
+        .detach();
+    }
+}
+
+async fn unlike_track(
+    item_id: i64,
+    entity: Entity<TrackItem>,
+    playlist_tracker: Entity<crate::ui::models::PlaylistInfoTransfer>,
+    pool: sqlx::SqlitePool,
+    cx: &mut AsyncApp,
+) {
+    let task = crate::RUNTIME.spawn(async move { db::remove_playlist_item(&pool, item_id).await });
+
+    match task.await {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => {
+            tracing::error!("could not unlike song: {err:?}");
+            let _ = entity.update(cx, |this, cx| {
+                this.is_liked = Some(item_id);
+                cx.notify();
+            });
+            return;
+        }
+        Err(err) => {
+            tracing::error!("unlike task panicked: {err:?}");
+            return;
+        }
+    }
+
+    let _ = playlist_tracker.update(cx, |_, cx| {
+        cx.emit(PlaylistEvent::PlaylistUpdated(1));
+    });
+}
+
+async fn like_track(
+    track_id: i64,
+    entity: Entity<TrackItem>,
+    playlist_tracker: Entity<crate::ui::models::PlaylistInfoTransfer>,
+    pool: sqlx::SqlitePool,
+    cx: &mut AsyncApp,
+) {
+    let task = crate::RUNTIME.spawn(async move { db::add_playlist_item(&pool, 1, track_id).await });
+
+    let new_id = match task.await {
+        Ok(Ok(id)) => id,
+        Ok(Err(err)) => {
+            tracing::error!("could not like song: {err:?}");
+            return;
+        }
+        Err(err) => {
+            tracing::error!("like task panicked: {err:?}");
+            return;
+        }
+    };
+
+    let _ = entity.update(cx, |this, cx| {
+        this.is_liked = Some(new_id);
+        cx.notify();
+    });
+
+    let _ = playlist_tracker.update(cx, |_, cx| {
+        cx.emit(PlaylistEvent::PlaylistUpdated(1));
+    });
+}
+
+fn remove_from_playlist(
+    item_id: i64,
+    playlist_id: i64,
+    pool: sqlx::SqlitePool,
+    playlist_tracker: Entity<crate::ui::models::PlaylistInfoTransfer>,
+    cx: &mut App,
+) {
+    cx.spawn(async move |cx| {
+        let task =
+            crate::RUNTIME.spawn(async move { db::remove_playlist_item(&pool, item_id).await });
+
+        match task.await {
+            Ok(Ok(())) => {}
+            Ok(Err(err)) => {
+                tracing::error!("could not remove track from playlist: {err:?}");
+                return;
+            }
+            Err(err) => {
+                tracing::error!("remove-from-playlist task panicked: {err:?}");
+                return;
+            }
+        }
+
+        let _ = playlist_tracker.update(cx, |_, cx| {
+            cx.emit(PlaylistEvent::PlaylistUpdated(playlist_id));
+        });
+    })
+    .detach();
 }
 
 pub fn play_from_track(cx: &mut App, track: &Track, pl_id: Option<i64>) {
