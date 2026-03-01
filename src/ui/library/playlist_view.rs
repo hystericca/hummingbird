@@ -16,21 +16,18 @@ use crate::{
         playlist::export_playlist,
         types::{Playlist, PlaylistType},
     },
-    playback::{
-        interface::{PlaybackInterface, replace_queue},
-        queue::QueueItemData,
-    },
+    playback::queue::QueueItemData,
     ui::{
         caching::hummingbird_cache,
         command_palette::{Command, CommandManager},
         components::{
-            button::{ButtonIntent, ButtonSize, button},
             drag_drop::{
                 DragDropItemState, DragDropListConfig, DragDropListManager, DragPreview,
                 DropIndicator, TrackDragData, check_drag_cancelled, continue_edge_scroll,
                 handle_track_drag_move, handle_track_drop,
             },
-            icons::{CIRCLE_PLUS, PLAY, PLAYLIST, SHUFFLE, STAR, icon},
+            icons::{PLAYLIST, STAR, icon},
+            playback_controls::playback_controls,
             scrollbar::{RightPad, ScrollableHandle, floating_scrollbar},
             table::table_data::TABLE_MAX_WIDTH,
         },
@@ -38,7 +35,7 @@ use crate::{
             ArtistNameVisibility,
             track_item::{TrackItem, TrackItemLeftField},
         },
-        models::{Models, PlaybackInfo, PlaylistEvent},
+        models::{Models, PlaylistEvent},
         theme::Theme,
         util::{create_or_retrieve_view, prune_views},
     },
@@ -245,6 +242,7 @@ impl Render for PlaylistView {
         let drag_drop_manager = self.drag_drop_manager.clone();
         let list_id = self.list_id.clone();
         let item_count = items_clone.len();
+        let playlist_id = self.playlist.id;
 
         if self.first_render {
             self.first_render = false;
@@ -333,107 +331,32 @@ impl Render for PlaylistView {
                                         },
                                     ),
                             )
-                            .child(
-                                div()
-                                    .gap(px(10.0))
-                                    .flex()
-                                    .child(
-                                        button()
-                                            .id("playlist-play-button")
-                                            .size(ButtonSize::Large)
-                                            .font_weight(FontWeight::SEMIBOLD)
-                                            .intent(ButtonIntent::Primary)
-                                            .child(icon(PLAY).size(px(16.0)).my_auto())
-                                            .child(tr!("PLAY"))
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                let tracks = cx
-                                                    .get_playlist_track_files(this.playlist.id)
-                                                    .unwrap();
+                            .child(playback_controls(
+                                "playlist",
+                                !self.playlist_track_ids.is_empty(),
+                                false,
+                                false,
+                                move |cx| {
+                                    let playlist_track_ids =
+                                        cx.get_playlist_tracks(playlist_id).unwrap_or_default();
+                                    let track_files = cx
+                                        .get_playlist_track_files(playlist_id)
+                                        .unwrap_or_default();
 
-                                                let queue_items = this
-                                                    .playlist_track_ids
-                                                    .iter()
-                                                    .zip(tracks.iter())
-                                                    .map(|((_, track, album), path)| {
-                                                        QueueItemData::new(
-                                                            cx,
-                                                            path.into(),
-                                                            Some(*track),
-                                                            Some(*album),
-                                                        )
-                                                    })
-                                                    .collect();
-
-                                                replace_queue(queue_items, cx);
-                                            })),
-                                    )
-                                    .child(
-                                        button()
-                                            .id("playlist-add-button")
-                                            .size(ButtonSize::Large)
-                                            .flex_none()
-                                            .child(icon(CIRCLE_PLUS).size(px(16.0)).my_auto())
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                let tracks = cx
-                                                    .get_playlist_track_files(this.playlist.id)
-                                                    .unwrap();
-
-                                                let queue_items = this
-                                                    .playlist_track_ids
-                                                    .iter()
-                                                    .zip(tracks.iter())
-                                                    .map(|((_, track, album), path)| {
-                                                        QueueItemData::new(
-                                                            cx,
-                                                            path.into(),
-                                                            Some(*track),
-                                                            Some(*album),
-                                                        )
-                                                    })
-                                                    .collect();
-
-                                                cx.global::<PlaybackInterface>()
-                                                    .queue_list(queue_items);
-                                            })),
-                                    )
-                                    .child(
-                                        button()
-                                            .id("playlist-shuffle-button")
-                                            .size(ButtonSize::Large)
-                                            .flex_none()
-                                            .child(icon(SHUFFLE).size(px(16.0)).my_auto())
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                let tracks = cx
-                                                    .get_playlist_track_files(this.playlist.id)
-                                                    .unwrap();
-
-                                                let queue_items = this
-                                                    .playlist_track_ids
-                                                    .iter()
-                                                    .zip(tracks.iter())
-                                                    .map(|((_, track, album), path)| {
-                                                        QueueItemData::new(
-                                                            cx,
-                                                            path.into(),
-                                                            Some(*track),
-                                                            Some(*album),
-                                                        )
-                                                    })
-                                                    .collect();
-
-                                                if !(*cx
-                                                    .global::<PlaybackInfo>()
-                                                    .shuffling
-                                                    .read(cx))
-                                                {
-                                                    cx.global::<PlaybackInterface>()
-                                                        .toggle_shuffle();
-                                                }
-
-                                                replace_queue(queue_items, cx);
-                                            })),
-                                    ),
-                            ),
+                                    playlist_track_ids
+                                        .iter()
+                                        .zip(track_files.iter())
+                                        .map(|((_, track_id, album_id), path)| {
+                                            QueueItemData::new(
+                                                cx,
+                                                path.into(),
+                                                Some(*track_id),
+                                                Some(*album_id),
+                                            )
+                                        })
+                                        .collect()
+                                },
+                            )),
                     ),
             )
             .child(

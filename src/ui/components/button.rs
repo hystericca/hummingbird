@@ -249,6 +249,11 @@ impl InteractiveButton {
         self.div = self.div.on_click(fun);
         self
     }
+
+    pub fn tooltip(mut self, build: impl Fn(&mut Window, &mut App) -> AnyView + 'static) -> Self {
+        self.div = self.div.tooltip(build);
+        self
+    }
 }
 
 impl Styled for InteractiveButton {
