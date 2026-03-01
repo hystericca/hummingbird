@@ -29,7 +29,7 @@ fn default_table_view_mode() -> TableViewModeSetting {
 }
 
 fn default_liked_tracks_sort_method() -> LikedTrackSortMethod {
-    LikedTrackSortMethod::RecentlyAdded
+    LikedTrackSortMethod::ReleaseOrder
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
