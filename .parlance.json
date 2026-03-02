@@ -7,5 +7,6 @@
       "path": "/translations/{lang}.json",
       "baseLang": "en"
     }
-  ]
+  ],
+  "deadline": 1773471600000
 }
