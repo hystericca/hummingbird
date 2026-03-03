@@ -36,6 +36,10 @@ fn get_available_languages() -> Vec<LanguageOption> {
             display_name: tr!("LANGUAGE_SYSTEM_DEFAULT", "System Default").into(),
         },
         LanguageOption {
+            code: "cs",
+            display_name: "Čeština".into(),
+        },
+        LanguageOption {
             code: "el",
             display_name: "Ελληνικά".into(),
         },
