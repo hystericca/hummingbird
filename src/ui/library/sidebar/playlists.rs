@@ -3,7 +3,8 @@ use std::sync::Arc;
 use cntp_i18n::{tr, trn};
 use gpui::{
     App, AppContext, Context, Entity, FontWeight, InteractiveElement, ParentElement, Render,
-    ScrollHandle, StatefulInteractiveElement, Styled, Window, div, prelude::FluentBuilder, px,
+    ScrollHandle, StatefulInteractiveElement, StyleRefinement, Styled, Window, div,
+    prelude::FluentBuilder, px,
 };
 use tracing::error;
 
@@ -15,11 +16,14 @@ use crate::{
     settings::SettingsGlobal,
     ui::{
         components::{
+            button::{ButtonIntent, button},
             context::context,
-            icons::{CROSS, PLAYLIST, STAR},
+            icons::{CROSS, PLAYLIST, PLUS, STAR},
             menu::{menu, menu_item},
+            popover::{PopoverPosition, popover},
             scrollbar::{RightPad, floating_scrollbar},
             sidebar::sidebar_item,
+            textbox::Textbox,
         },
         library::{NavigationHistory, ViewSwitchMessage},
         models::{Models, PlaylistEvent},
@@ -31,6 +35,8 @@ pub struct PlaylistList {
     playlists: Arc<Vec<PlaylistWithCount>>,
     nav_model: Entity<NavigationHistory>,
     scroll_handle: ScrollHandle,
+    popover_open: bool,
+    new_playlist_input: Entity<Textbox>,
 }
 
 impl PlaylistList {
@@ -59,12 +65,45 @@ impl PlaylistList {
             })
             .detach();
 
+            let weak_self = cx.entity().downgrade();
+            let new_playlist_input =
+                Textbox::new_with_submit(cx, StyleRefinement::default(), move |cx| {
+                    if let Some(entity) = weak_self.upgrade() {
+                        entity.update(cx, |this, cx| this.handle_submit(cx));
+                    }
+                });
+
             Self {
                 playlists: playlists.clone(),
                 nav_model,
                 scroll_handle: ScrollHandle::new(),
+                popover_open: false,
+                new_playlist_input,
             }
         })
+    }
+
+    fn handle_submit(&mut self, cx: &mut Context<Self>) {
+        let name = self.new_playlist_input.read(cx).value(cx);
+        if name.is_empty() {
+            return;
+        }
+
+        if let Ok(id) = cx.create_playlist(&name) {
+            let playlist_tracker = cx.global::<Models>().playlist_tracker.clone();
+            playlist_tracker.update(cx, |_, cx| {
+                cx.emit(PlaylistEvent::PlaylistUpdated(id));
+            });
+        }
+
+        self.popover_open = false;
+        self.new_playlist_input.update(cx, |tb, cx| tb.reset(cx));
+        cx.notify();
+    }
+
+    fn close_popover(&mut self, cx: &mut Context<Self>) {
+        self.popover_open = false;
+        cx.notify();
     }
 }
 
@@ -201,6 +240,77 @@ impl Render for PlaylistList {
             }
         }
 
+        let popover_open = self.popover_open;
+        let new_playlist_input = self.new_playlist_input.clone();
+        let weak_self = cx.entity().downgrade();
+
+        main = main.child(
+            div()
+                .relative()
+                .child(
+                    sidebar_item("new-playlist-btn")
+                        .icon(PLUS)
+                        .child(tr!("NEW_PLAYLIST", "New Playlist"))
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            this.popover_open = !this.popover_open;
+                            if this.popover_open {
+                                this.new_playlist_input
+                                    .read(cx)
+                                    .focus_handle()
+                                    .focus(window, cx);
+                            }
+                            cx.notify();
+                        })),
+                )
+                .when(popover_open, |this| {
+                    this.child(
+                        popover()
+                            .position(PopoverPosition::RightTop)
+                            .edge_offset(px(12.0))
+                            .on_dismiss(move |_, cx| {
+                                if let Some(entity) = weak_self.upgrade() {
+                                    entity.update(cx, |this, cx| this.close_popover(cx));
+                                }
+                            })
+                            .min_w(px(250.0))
+                            .flex()
+                            .flex_col()
+                            .gap(px(6.0))
+                            .on_any_mouse_down(|_, _, cx| {
+                                cx.stop_propagation();
+                            })
+                            .on_mouse_down_out(cx.listener(|this, _, _, cx| {
+                                cx.stop_propagation();
+                                this.close_popover(cx);
+                            }))
+                            .child(new_playlist_input.clone())
+                            .child(
+                                div()
+                                    .flex()
+                                    .justify_end()
+                                    .gap(px(6.0))
+                                    .child(
+                                        button()
+                                            .id("cancel-playlist")
+                                            .child(tr!("CANCEL", "Cancel"))
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.close_popover(cx);
+                                            })),
+                                    )
+                                    .child(
+                                        button()
+                                            .id("create-playlist")
+                                            .intent(ButtonIntent::Primary)
+                                            .child(tr!("CREATE", "Create"))
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.handle_submit(cx);
+                                            })),
+                                    ),
+                            ),
+                    )
+                }),
+        );
+
         div()
             .mt(px(-6.0))
             .flex()
@@ -210,6 +320,7 @@ impl Render for PlaylistList {
             .min_h(px(0.0))
             .relative()
             .child(main)
+            .when(!collapsed, |this| this)
             .child(floating_scrollbar(
                 "playlist_list_scrollbar",
                 scroll_handle,

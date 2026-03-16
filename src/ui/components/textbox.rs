@@ -1,9 +1,14 @@
+use std::sync::Arc;
+
 use gpui::{
     App, AppContext, Context, Entity, FocusHandle, InteractiveElement, ParentElement, Refineable,
     Render, SharedString, StyleRefinement, Styled, Window, div, px,
 };
 
-use crate::ui::{components::input::TextInput, theme::Theme};
+use crate::ui::{
+    components::input::{EnrichedInputAction, TextInput},
+    theme::Theme,
+};
 
 pub struct Textbox {
     input: Entity<TextInput>,
@@ -24,6 +29,39 @@ impl Textbox {
         })
     }
 
+    pub fn new_with_submit(
+        cx: &mut App,
+        style: StyleRefinement,
+        on_submit: impl Fn(&mut App) + 'static,
+    ) -> Entity<Self> {
+        cx.new(|cx| {
+            let handle = cx.focus_handle();
+            let on_submit = Arc::new(on_submit);
+            let handler = Box::new(
+                move |action: EnrichedInputAction, _window: &mut Window, cx: &mut App| {
+                    if let EnrichedInputAction::Accept = action {
+                        let on_submit = on_submit.clone();
+                        cx.defer(move |cx| on_submit(cx));
+                    }
+                },
+            );
+
+            Self {
+                style,
+                handle: handle.clone(),
+                input: TextInput::new(cx, handle, None, None, Some(handler)),
+            }
+        })
+    }
+
+    pub fn focus_handle(&self) -> FocusHandle {
+        self.handle.clone()
+    }
+
+    pub fn reset(&self, cx: &mut App) {
+        self.input.update(cx, |input, _| input.reset());
+    }
+
     pub fn value(&self, cx: &App) -> SharedString {
         self.input.read(cx).content.clone()
     }
@@ -38,11 +76,13 @@ impl Render for Textbox {
 
         main.track_focus(&self.handle)
             .border_1()
+            .text_sm()
             .border_color(theme.textbox_border)
             .rounded(px(4.0))
-            .px(px(4.0))
-            .py(px(2.0))
             .bg(theme.textbox_background)
+            .px(px(8.0))
+            .py(px(6.0))
+            .line_height(px(14.0))
             .child(self.input.clone())
     }
 }

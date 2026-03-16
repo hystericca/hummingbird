@@ -31,6 +31,7 @@
   "ARTISTS": "Artists",
   "ARTIST_ALBUMS": "Albums",
   "ARTIST_LIKED_TRACKS": "Liked Tracks",
+  "CANCEL": "Cancel",
   "CLEAR_QUEUE": "Clear",
   "CLICK_TO_CONFIRM": "Click to confirm sign in",
   "COLUMN_ALBUM": "Album",
@@ -45,6 +46,7 @@
   "COLUMN_TRACKS": "# of Tracks",
   "COMMAND_PALETTE": "Command Palette",
   "CONNECTED": "Connected",
+  "CREATE": "Create",
   "CREATE_PLAYLIST": "Create new playlist '{{name}}'",
   "DELETE_PLAYLIST": "Delete playlist",
   "DISCORD": "Join us on Discord",
@@ -70,6 +72,7 @@
   "LIBRARY_FORCE_RESCAN": "Rescan Entire Library",
   "LIBRARY_SHUFFLE_ALL": "Shuffle All",
   "LIKED_SONGS": "Liked Songs",
+  "NEW_PLAYLIST": "New Playlist",
   "PALETTE_SHOW_MORE": {
     "one": "Show {{count}} more...",
     "other": "Show {{count}} more..."

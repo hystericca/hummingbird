@@ -14,6 +14,7 @@ pub mod menus_builder;
 pub mod modal;
 pub mod nav_button;
 pub mod palette;
+pub mod popover;
 pub mod playback_controls;
 pub mod resizable_sidebar;
 pub mod scrollbar;

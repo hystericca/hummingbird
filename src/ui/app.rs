@@ -35,7 +35,7 @@ use crate::{
 use super::{
     about::about_dialog,
     arguments::parse_args_and_prepare,
-    components::{input, modal, window_chrome::window_chrome},
+    components::{input, modal, popover, window_chrome::window_chrome},
     controls::Controls,
     global_actions::register_actions,
     header::Header,
@@ -226,6 +226,7 @@ pub fn run() -> anyhow::Result<()> {
             modal::bind_actions(cx);
             library::bind_actions(cx);
             dropdown::bind_actions(cx);
+            popover::bind_actions(cx);
 
             let settings = cx.global::<SettingsGlobal>().model.read(cx);
 

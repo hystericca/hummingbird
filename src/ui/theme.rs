@@ -225,8 +225,8 @@ impl Default for Theme {
             scrollbar_background: rgb(0x252839),
             scrollbar_foreground: rgb(0x616794),
 
-            textbox_background: rgb(0x37394E),
-            textbox_border: rgb(0x303843),
+            textbox_background: rgb(0x373B4E),
+            textbox_border: rgb(0x4F5267),
 
             checkbox_background: rgb(0x373B4E),
             checkbox_background_hover: rgb(0x494E67),
