@@ -90,10 +90,12 @@ impl Render for WindowShadow {
                     .overflow_hidden()
                     .size_full()
                     .flex()
-                    .flex_col()
+                    // the whole application has to be flipped upside down otherwise sidebar icons
+                    // overlap menu bar menus
+                    .flex_col_reverse()
                     .max_w_full()
                     .max_h_full()
-                    .child(self.header.clone())
+                    .child(self.controls.clone())
                     .child(
                         div()
                             .w_full()
@@ -105,7 +107,7 @@ impl Render for WindowShadow {
                             .child(self.library.clone())
                             .when(*self.show_queue.read(cx), |this| this.child(queue)),
                     )
-                    .child(self.controls.clone())
+                    .child(self.header.clone())
                     .child(self.search.clone())
                     .child(self.palette.clone())
                     .when(show_about, |this| {

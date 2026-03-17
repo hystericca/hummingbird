@@ -113,9 +113,7 @@ impl InteractiveElement for SidebarItem {
 }
 
 impl RenderOnce for SidebarItem {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let is_hovering = window.use_keyed_state(self.group_id.clone(), cx, |_, _| false);
-        let is_hovering_clone = is_hovering.clone();
+    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.global::<Theme>();
 
         let item = self
@@ -184,41 +182,35 @@ impl RenderOnce for SidebarItem {
             let label_text = self.label.unwrap();
             let group_name = self.group_id;
 
-            let div = div()
-                .relative()
-                .id("with-label")
-                .on_hover(move |hover, _, cx| {
-                    is_hovering_clone.write(cx, *hover);
-                })
-                .group(group_name.clone())
-                .child(item)
-                .child(
-                    div()
-                        .absolute()
-                        .left_full()
-                        .top_0()
-                        .ml(px(4.0))
-                        .bg(theme.elevated_background)
-                        .border_1()
-                        .border_color(theme.elevated_border_color)
-                        .rounded(px(4.0))
-                        .shadow_sm()
-                        .px(px(12.0))
-                        .pt(px(6.0))
-                        .pb(px(5.0))
-                        .text_sm()
-                        .text_color(theme.text)
-                        .whitespace_nowrap()
-                        .child(label_text)
-                        .invisible()
-                        .group_hover(group_name, |this| this.visible()),
-                );
-
-            if *is_hovering.read(cx) {
-                deferred(div).into_any_element()
-            } else {
-                div.into_any_element()
-            }
+            deferred(
+                div()
+                    .relative()
+                    .id("with-label")
+                    .group(group_name.clone())
+                    .child(item)
+                    .child(
+                        div()
+                            .absolute()
+                            .left_full()
+                            .top_0()
+                            .ml(px(4.0))
+                            .bg(theme.elevated_background)
+                            .border_1()
+                            .border_color(theme.elevated_border_color)
+                            .rounded(px(4.0))
+                            .shadow_sm()
+                            .px(px(12.0))
+                            .pt(px(6.0))
+                            .pb(px(5.0))
+                            .text_sm()
+                            .text_color(theme.text)
+                            .whitespace_nowrap()
+                            .child(label_text)
+                            .invisible()
+                            .group_hover(group_name, |this| this.visible()),
+                    ),
+            )
+            .into_any_element()
         } else {
             item.into_any_element()
         }
