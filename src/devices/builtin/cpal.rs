@@ -152,10 +152,7 @@ impl CpalDevice {
         let config =
             cpal_config_from_info(&format).map_err(|_| OpenError::InvalidConfigProvider)?;
 
-        let channels = match format.channels {
-            ChannelSpec::Count(v) => v,
-            _ => panic!("non cpal device"),
-        };
+        let ChannelSpec::Count(channels) = format.channels;
 
         let buffer_size = ((200 * config.sample_rate as usize) / 1000) * channels as usize;
 

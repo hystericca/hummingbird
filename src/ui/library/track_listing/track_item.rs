@@ -156,7 +156,7 @@ impl Render for TrackItem {
         let track_menu_context = TrackContextMenuContext {
             show_go_to_album: self.show_go_to_album,
             show_go_to_artist: self.show_go_to_artist,
-            play_from_here: Some(Arc::new({
+            play_from_here: Some(Rc::new({
                 let plid = self.pl_info.as_ref().map(|pl| pl.id);
                 let queue_context = self.queue_context.clone();
                 move |cx, track| play_from_track_listing(cx, track, plid, queue_context.clone())

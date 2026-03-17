@@ -33,7 +33,7 @@ pub struct PlaylistMenuInfo {
     pub item_id: i64,
 }
 
-type TrackPlayFromHereHandler = Arc<dyn Fn(&mut App, &Track) + 'static>;
+type TrackPlayFromHereHandler = Rc<dyn Fn(&mut App, &Track) + 'static>;
 
 #[derive(Clone, Default)]
 pub struct TrackContextMenuContext {

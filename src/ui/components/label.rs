@@ -14,7 +14,6 @@ pub struct Label {
     id: ElementId,
     text: SharedString,
     subtext: Option<SharedString>,
-    group: Option<SharedString>,
     on_click: Option<ClickEvHandler>,
     children: SmallVec<[AnyElement; 2]>,
     has_checkbox: bool,
@@ -24,11 +23,6 @@ pub struct Label {
 impl Label {
     pub fn subtext(mut self, subtext: impl Into<SharedString>) -> Self {
         self.subtext = Some(subtext.into());
-        self
-    }
-
-    pub fn group(mut self, group: impl Into<SharedString>) -> Self {
-        self.group = Some(group.into());
         self
     }
 
@@ -109,7 +103,6 @@ pub fn label(id: impl Into<ElementId>, text: impl Into<SharedString>) -> Label {
         id: id.into(),
         text: text.into(),
         subtext: None,
-        group: None,
         children: SmallVec::new(),
         has_checkbox: false,
         on_click: None,

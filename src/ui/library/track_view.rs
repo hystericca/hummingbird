@@ -2,7 +2,6 @@ use std::{
     cell::RefCell,
     path::{Path, PathBuf},
     rc::Rc,
-    sync::Arc,
 };
 
 use gpui::{prelude::FluentBuilder, *};
@@ -85,7 +84,7 @@ impl TrackView {
             let context_menu_context = TrackContextMenuContext {
                 show_go_to_album: true,
                 show_go_to_artist: true,
-                play_from_here: Some(Arc::new({
+                play_from_here: Some(Rc::new({
                     let table_ref = table_ref.clone();
                     move |cx, track| {
                         let table_ref_read = table_ref.borrow();

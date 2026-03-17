@@ -265,7 +265,7 @@ where
 
     fn build_display_list(
         matches: &[Arc<T>],
-        expanded_categories: &Vec<I18nString>,
+        expanded_categories: &[I18nString],
     ) -> Vec<DisplayEntry<T>> {
         let mut category_order: Vec<I18nString> = Vec::new();
         let mut category_counts: Vec<usize> = Vec::new();
@@ -291,9 +291,7 @@ where
                 .collect();
         }
 
-        let mut display_list = Vec::with_capacity(
-            matches.len() + category_order.len() + if has_uncategorized { 0 } else { 0 },
-        );
+        let mut display_list = Vec::with_capacity(matches.len() + category_order.len());
 
         if has_uncategorized {
             for item in matches {

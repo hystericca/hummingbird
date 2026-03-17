@@ -17,18 +17,6 @@ pub struct Textbox {
 }
 
 impl Textbox {
-    pub fn new(cx: &mut App, style: StyleRefinement) -> Entity<Self> {
-        cx.new(|cx| {
-            let handle = cx.focus_handle();
-
-            Self {
-                style,
-                handle: handle.clone(),
-                input: TextInput::new(cx, handle, None, None, None),
-            }
-        })
-    }
-
     pub fn new_with_submit(
         cx: &mut App,
         style: StyleRefinement,
