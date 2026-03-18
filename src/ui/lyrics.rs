@@ -76,7 +76,7 @@ impl Lyrics {
 
             cx.observe(&position, |this: &mut Lyrics, pos, cx| {
                 if let Some(parsed) = &this.parsed {
-                    let pos_ms = *pos.read(cx) * 1_000;
+                    let pos_ms = *pos.read(cx);
                     let idx = parsed.partition_point(|l| l.time_ms <= pos_ms);
                     let new_line = if idx == 0 { None } else { Some(idx - 1) };
                     if new_line != this.last_active_line {
@@ -200,10 +200,13 @@ impl Render for Lyrics {
                 .w_full()
                 .id("lyrics-scroll-container")
                 .relative()
-                .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                    this.register_user_interaction();
-                    cx.notify();
-                }))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(|this, _, _, cx| {
+                        this.register_user_interaction();
+                        cx.notify();
+                    }),
+                )
                 .on_scroll_wheel(cx.listener(|this, _, _, cx| {
                     this.register_user_interaction();
                     cx.notify();
@@ -217,19 +220,21 @@ impl Render for Lyrics {
                         .track_scroll(&scroll_handle)
                         .children(items),
                 )
-                .child(floating_scrollbar(
-                    "lyrics-scrollbar",
-                    ScrollableHandle::Regular(scroll_handle),
-                    RightPad::Pad,
+                .child(
+                    floating_scrollbar(
+                        "lyrics-scrollbar",
+                        ScrollableHandle::Regular(scroll_handle),
+                        RightPad::Pad,
+                    )
+                    .on_interaction(move |_, cx| {
+                        if let Some(lyrics) = lyrics.upgrade() {
+                            lyrics.update(cx, |this, cx| {
+                                this.register_user_interaction();
+                                cx.notify();
+                            });
+                        }
+                    }),
                 )
-                .on_interaction(move |_, cx| {
-                    if let Some(lyrics) = lyrics.upgrade() {
-                        lyrics.update(cx, |this, cx| {
-                            this.register_user_interaction();
-                            cx.notify();
-                        });
-                    }
-                }))
                 .into_any_element()
         } else {
             let text = self.content.clone().unwrap();

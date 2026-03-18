@@ -91,6 +91,12 @@ fn parse_r128_gain(value: &Value) -> Option<f64> {
     }
 }
 
+fn time_to_millis(time: Time) -> u64 {
+    time.seconds
+        .saturating_mul(1_000)
+        .saturating_add((time.frac * 1_000.0) as u64)
+}
+
 #[derive(Default)]
 pub struct SymphoniaProvider;
 
@@ -100,7 +106,7 @@ pub struct SymphoniaStream {
     current_track: u32,
     current_duration: u64,
     current_length: Option<u64>,
-    current_position: u64,
+    current_position_ms: u64,
     current_timebase: Option<TimeBase>,
     decoder: Option<Box<dyn Decoder>>,
     pending_metadata_update: bool,
@@ -346,7 +352,7 @@ impl MediaProvider for SymphoniaProvider {
             current_track: 0,
             current_duration: 0,
             current_length: None,
-            current_position: 0,
+            current_position_ms: 0,
             current_timebase: None,
             decoder: None,
             pending_metadata_update: false,
@@ -505,11 +511,11 @@ impl MediaStream for SymphoniaStream {
         }
     }
 
-    fn position_secs(&self) -> Result<u64, TrackDurationError> {
+    fn position_ms(&self) -> Result<u64, TrackDurationError> {
         if self.decoder.is_none() || self.current_length.is_none() {
             Err(TrackDurationError::NeverStarted)
         } else {
-            Ok(self.current_position)
+            Ok(self.current_position_ms)
         }
     }
 
@@ -532,7 +538,7 @@ impl MediaStream for SymphoniaStream {
             .map_err(|e| SeekError::Unknown(e.to_string()))?;
 
         if let Some(timebase) = timebase {
-            self.current_position = timebase.calc_time(seek.actual_ts).seconds;
+            self.current_position_ms = time_to_millis(timebase.calc_time(seek.actual_ts));
         }
 
         Ok(())
@@ -685,7 +691,7 @@ impl MediaStream for SymphoniaStream {
                     self.current_duration = decoded.capacity() as u64;
 
                     if let Some(tb) = &self.current_timebase {
-                        self.current_position = tb.calc_time(packet.ts()).seconds;
+                        self.current_position_ms = time_to_millis(tb.calc_time(packet.ts()));
                     }
 
                     // prepare buffers
@@ -829,7 +835,7 @@ impl MediaStream for SymphoniaStream {
                     self.current_duration = decoded.capacity() as u64;
 
                     if let Some(tb) = &self.current_timebase {
-                        self.current_position = tb.calc_time(packet.ts()).seconds;
+                        self.current_position_ms = time_to_millis(tb.calc_time(packet.ts()));
                     }
 
                     // Only handle F32, return NotF32 for other formats

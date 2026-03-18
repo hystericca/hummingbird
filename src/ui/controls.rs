@@ -597,9 +597,11 @@ impl Scrubber {
 impl Render for Scrubber {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
-        let position = *self.position.read(cx);
-        let duration = *self.duration.read(cx);
-        let remaining = duration - position;
+        let position_ms = *self.position.read(cx);
+        let duration_secs = *self.duration.read(cx);
+        let position_secs = position_ms / 1_000;
+        let duration_ms = duration_secs.saturating_mul(1_000);
+        let remaining_secs = duration_secs.saturating_sub(position_secs);
 
         let window_width = window.viewport_size().width;
 
@@ -624,8 +626,8 @@ impl Render for Scrubber {
                     .mb(px(6.0))
                     .child(div().mr(px(6.0)).line_height(rems(1.0)).child(format!(
                         "{:02}:{:02}",
-                        position / 60,
-                        position % 60
+                        position_secs / 60,
+                        position_secs % 60
                     )))
                     .when(window_width > px(900.0), |this| {
                         this.child(
@@ -635,15 +637,19 @@ impl Render for Scrubber {
                                 .border_l(px(2.0))
                                 .pl(px(6.0))
                                 .text_color(rgb(0xcbd5e1))
-                                .child(format!("{:02}:{:02}", duration / 60, duration % 60)),
+                                .child(format!(
+                                    "{:02}:{:02}",
+                                    duration_secs / 60,
+                                    duration_secs % 60
+                                )),
                         )
                     })
                     .child(self.playback_section.clone())
                     .child(div().h(px(30.0)))
                     .child(div().ml(auto()).line_height(rems(1.0)).child(format!(
                         "-{:02}:{:02}",
-                        remaining / 60,
-                        remaining % 60
+                        remaining_secs / 60,
+                        remaining_secs % 60
                     ))),
             )
             .child(
@@ -652,13 +658,19 @@ impl Render for Scrubber {
                     .h(px(6.0))
                     .rounded(px(3.0))
                     .id("scrubber-back")
-                    .value(position as f32 / duration as f32)
+                    .value(if duration_ms > 0 {
+                        position_ms as f32 / duration_ms as f32
+                    } else {
+                        0.0
+                    })
                     .on_change(move |v, _, cx| {
                         let info = cx.global::<PlaybackInfo>().clone();
 
-                        if duration > 0 && *info.playback_state.read(cx) != PlaybackState::Stopped {
+                        if duration_secs > 0
+                            && *info.playback_state.read(cx) != PlaybackState::Stopped
+                        {
                             cx.global::<PlaybackInterface>()
-                                .seek(v as f64 * duration as f64);
+                                .seek(v as f64 * duration_secs as f64);
                         }
                     }),
             )

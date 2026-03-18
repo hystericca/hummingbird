@@ -128,10 +128,10 @@ pub trait MediaStream {
     /// samples.
     fn duration_secs(&self) -> Result<u64, TrackDurationError>;
 
-    /// Returns the current playback position in seconds. If no file is opened, or playback has not
-    /// started, this function should return an error. This function should be available
+    /// Returns the current playback position in milliseconds. If no file is opened, or playback
+    /// has not started, this function should return an error. This function should be available
     /// immediately after playback has started, and should not require reading any samples.
-    fn position_secs(&self) -> Result<u64, TrackDurationError>;
+    fn position_ms(&self) -> Result<u64, TrackDurationError>;
 
     /// Returns the chnanel specification used by the track being decoded. This function should be
     /// available immediately after playback has started, and should not require reading any

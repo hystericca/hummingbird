@@ -101,8 +101,7 @@ pub enum PlaybackEvent {
     /// Indicates that the MediaProvider has provided a new album art image to be consumed by the
     /// user interface.
     AlbumArtUpdate(Option<Box<[u8]>>),
-    /// Indicates that the position in the current file has changed. The f64 is the new position,
-    /// in seconds.
+    /// Indicates that the position in the current file has changed, in milliseconds.
     PositionChanged(u64),
     /// Notification for when shuffling is disabled or enabled by the thread.
     ShuffleToggled(bool, usize),

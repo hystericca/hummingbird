@@ -293,9 +293,9 @@ impl AudioEngine {
             .map_err(|e| EngineError::DeviceError(format!("Failed to set RG: {:?}", e)))
     }
 
-    /// Get the current playback position in seconds.
-    pub fn position_secs(&self) -> Option<u64> {
-        self.media.position_secs().ok()
+    /// Get the current playback position in milliseconds.
+    pub fn position_ms(&self) -> Option<u64> {
+        self.media.position_ms().ok()
     }
 
     /// Check for metadata updates and return them if available.

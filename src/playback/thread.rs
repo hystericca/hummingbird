@@ -59,8 +59,8 @@ pub struct PlaybackThread {
     playback_settings: PlaybackSettings,
     commands_rx: UnboundedReceiver<PlaybackCommand>,
     events_tx: UnboundedSender<PlaybackEvent>,
-    /// The last timestamp of the current track. This is used to determine if the position has
-    /// changed since the last update.
+    /// The last timestamp of the current track in milliseconds. This is used to determine if the
+    /// position has changed since the last update.
     last_timestamp: u64,
     engine: AudioEngine,
     queue: QueueManager,
@@ -336,7 +336,7 @@ impl PlaybackThread {
         // If we're past 5 seconds, seek to start instead of going to previous track
         if self.state() == PlaybackState::Playing
             && self.playback_settings.prev_track_jump_first
-            && self.last_timestamp > 5
+            && self.last_timestamp > 5_000
         {
             self.seek(0_f64);
             return;
@@ -608,7 +608,7 @@ impl PlaybackThread {
 
     /// Emit a [`PositionChanged`] event if the timestamp has changed.
     fn update_ts(&mut self) {
-        if let Some(timestamp) = self.engine.position_secs() {
+        if let Some(timestamp) = self.engine.position_ms() {
             if timestamp == self.last_timestamp {
                 return;
             }

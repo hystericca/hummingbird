@@ -227,7 +227,7 @@ pub fn register_pbc_event_handlers(cx: &mut App) {
     cx.observe(&position, |e, cx| {
         let &pos = e.read(cx);
         let PbcHandle(tx, _) = cx.global();
-        if let Err(err) = tx.send(PbcEvent::PositionChanged(pos)) {
+        if let Err(err) = tx.send(PbcEvent::PositionChanged(pos / 1_000)) {
             error!(msg = ?err.0, "failed to send pbc event: {err}");
         }
     })

@@ -114,10 +114,7 @@ impl Scrollbar {
         self
     }
 
-    pub fn on_interaction(
-        mut self,
-        handler: impl Fn(&mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub fn on_interaction(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_interaction = Some(Rc::new(handler));
         self
     }
@@ -555,10 +552,7 @@ pub struct FloatingScrollbar {
 }
 
 impl FloatingScrollbar {
-    pub fn on_interaction(
-        mut self,
-        handler: impl Fn(&mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub fn on_interaction(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_interaction = Some(Rc::new(handler));
         self
     }
@@ -584,8 +578,7 @@ impl RenderOnce for FloatingScrollbar {
             .my(px(4.0))
             .occlude()
             .child(
-                sb
-                    .w(px(10.0))
+                sb.w(px(10.0))
                     .h_full()
                     .bg(theme.scrollbar_background)
                     .text_color(theme.scrollbar_foreground)

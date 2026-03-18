@@ -157,11 +157,11 @@ impl MediaController {
         })
     }
 
-    pub fn position_secs(&self) -> Result<u64, TrackDurationError> {
+    pub fn position_ms(&self) -> Result<u64, TrackDurationError> {
         self.media_stream
             .as_ref()
             .ok_or(TrackDurationError::NeverStarted)?
-            .position_secs()
+            .position_ms()
     }
 
     pub fn sample_format(&self) -> Result<SampleFormat, ChannelRetrievalError> {
