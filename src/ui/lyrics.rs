@@ -312,9 +312,7 @@ impl Lyrics {
         }
 
         let scroll_handle: ScrollableHandle = self.scroll_handle.clone().into();
-        let changed = self.scroll_follow.advance(&scroll_handle);
-
-        changed
+        self.scroll_follow.advance(&scroll_handle)
     }
 
     fn compute_follow_target(&self) -> FollowTarget {
@@ -355,10 +353,10 @@ impl Lyrics {
             .collect();
 
         self.line_emphasis_target_values.fill(0.0);
-        if let Some(active_line) = active_line {
-            if active_line < self.line_emphasis_target_values.len() {
-                self.line_emphasis_target_values[active_line] = 1.0;
-            }
+        if let Some(active_line) = active_line
+            && active_line < self.line_emphasis_target_values.len()
+        {
+            self.line_emphasis_target_values[active_line] = 1.0;
         }
 
         let has_change = self
