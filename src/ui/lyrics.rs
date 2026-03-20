@@ -10,7 +10,7 @@ use crate::{
             icons::{MICROPHONE, icon},
             scrollbar::{RightPad, ScrollableHandle, floating_scrollbar},
         },
-        models::{CurrentTrack, PlaybackInfo},
+        models::{CurrentTrack, Models, PlaybackInfo},
         scroll_follow::{SmoothScrollFollow, ease_out_cubic},
         theme::Theme,
     },
@@ -126,6 +126,7 @@ impl Lyrics {
 impl Render for Lyrics {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
+        let queue = cx.global::<Models>().queue_width.read(cx).as_f32();
 
         let muted = theme.text_secondary;
         let normal = theme.text;
@@ -157,52 +158,49 @@ impl Render for Lyrics {
             let scroll_handle = self.scroll_handle.clone();
             let lyrics = cx.entity().downgrade();
 
-            let items: Vec<AnyElement> = parsed
-                .iter()
-                .enumerate()
-                .map(|(idx, line)| {
-                    let time_ms = line.time_ms;
-                    if line.text.is_empty() {
-                        div().h(px(16.0)).w_full().into_any_element()
-                    } else {
-                        let emphasis = self.line_emphasis_for(idx);
-                        let is_active = emphasis > 0.0 || Some(idx) == active_line;
-                        let text_color = lerp_color(muted, normal, emphasis);
-                        let font_size =
-                            lerp(LYRICS_BASE_TEXT_SIZE, LYRICS_ACTIVE_TEXT_SIZE, emphasis);
-                        let width_fraction = font_size / LYRICS_ACTIVE_TEXT_SIZE;
-                        div()
-                            .id(("lyric", idx))
-                            .on_click(move |_, _, cx| {
-                                let interface = cx.global::<PlaybackInterface>();
-                                // add a small offset to make sure it goes to the next frame
-                                interface.seek(time_ms as f64 / 1000_f64 + 0.1);
-                            })
-                            .cursor_pointer()
-                            .max_w(relative(width_fraction))
-                            .px(px(20.0))
-                            .py(px(lerp(
-                                LYRICS_BASE_VERTICAL_PADDING,
-                                LYRICS_ACTIVE_VERTICAL_PADDING,
-                                emphasis,
-                            )))
-                            .text_size(px(font_size))
-                            .line_height(rems(lerp(
-                                LYRICS_BASE_LINE_HEIGHT,
-                                LYRICS_ACTIVE_LINE_HEIGHT,
-                                emphasis,
-                            )))
-                            .font_weight(if is_active {
-                                FontWeight::EXTRA_BOLD
-                            } else {
-                                FontWeight::BOLD
-                            })
-                            .text_color(text_color)
-                            .child(SharedString::from(line.text.clone()))
-                            .into_any_element()
-                    }
-                })
-                .collect();
+            let items = parsed.iter().enumerate().map(|(idx, line)| {
+                let time_ms = line.time_ms;
+                if line.text.is_empty() {
+                    div().h(px(16.0)).w_full().into_any_element()
+                } else {
+                    let emphasis = self.line_emphasis_for(idx);
+                    let is_active = emphasis > 0.0 || Some(idx) == active_line;
+                    let text_color = lerp_color(muted, normal, emphasis);
+                    let font_size = lerp(LYRICS_BASE_TEXT_SIZE, LYRICS_ACTIVE_TEXT_SIZE, emphasis);
+                    let width = (font_size / LYRICS_ACTIVE_TEXT_SIZE) * queue;
+
+                    div()
+                        .id(("lyric", idx))
+                        .on_click(move |_, _, cx| {
+                            let interface = cx.global::<PlaybackInterface>();
+                            // add a small offset to make sure it goes to the next frame
+                            interface.seek(time_ms as f64 / 1000_f64 + 0.1);
+                        })
+                        .cursor_pointer()
+                        .max_w(px(width))
+                        .overflow_x_hidden()
+                        .px(px(20.0))
+                        .py(px(lerp(
+                            LYRICS_BASE_VERTICAL_PADDING,
+                            LYRICS_ACTIVE_VERTICAL_PADDING,
+                            emphasis,
+                        )))
+                        .text_size(px(font_size))
+                        .line_height(rems(lerp(
+                            LYRICS_BASE_LINE_HEIGHT,
+                            LYRICS_ACTIVE_LINE_HEIGHT,
+                            emphasis,
+                        )))
+                        .font_weight(if is_active {
+                            FontWeight::EXTRA_BOLD
+                        } else {
+                            FontWeight::BOLD
+                        })
+                        .text_color(text_color)
+                        .child(SharedString::from(line.text.clone()))
+                        .into_any_element()
+                }
+            });
 
             div()
                 .h_full()
@@ -226,6 +224,8 @@ impl Render for Lyrics {
                         .id("lyrics-scroll")
                         .h_full()
                         .w_full()
+                        .flex()
+                        .flex_col()
                         .overflow_y_scroll()
                         .track_scroll(&scroll_handle)
                         .children(items),
