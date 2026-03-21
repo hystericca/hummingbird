@@ -205,7 +205,6 @@ impl Render for Lyrics {
             div()
                 .h_full()
                 .w_full()
-                .py(px(8.0))
                 .id("lyrics-scroll-container")
                 .relative()
                 .on_mouse_down(
@@ -224,6 +223,7 @@ impl Render for Lyrics {
                         .id("lyrics-scroll")
                         .h_full()
                         .w_full()
+                        .py(px(9.0))
                         .flex()
                         .flex_col()
                         .overflow_y_scroll()
