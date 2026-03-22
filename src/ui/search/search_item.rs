@@ -29,6 +29,7 @@ pub enum SearchPaletteItem {
     Track {
         id: i64,
         title: String,
+        artists: String,
         album_id: Option<i64>,
     },
 }
@@ -41,7 +42,7 @@ impl SearchPaletteItem {
     pub fn from_search_results(
         albums: Vec<(u32, String, String, bool)>,
         artists: Vec<(i64, String)>,
-        tracks: Vec<(i64, String, Option<i64>)>,
+        tracks: Vec<(i64, String, String, Option<i64>)>,
     ) -> Vec<Arc<SearchPaletteItem>> {
         let mut items: Vec<Arc<SearchPaletteItem>> = Vec::new();
 
@@ -58,10 +59,11 @@ impl SearchPaletteItem {
             }));
         }
 
-        for (id, title, album_id) in tracks {
+        for (id, title, artists, album_id) in tracks {
             items.push(Arc::new(SearchPaletteItem::Track {
                 id,
                 title,
+                artists,
                 album_id,
             }));
         }
@@ -77,7 +79,15 @@ impl PaletteItem for SearchPaletteItem {
                 Some(FinderItemLeft::Image(Self::thumbnail_path(*id).into()))
             }
             SearchPaletteItem::Artist { .. } => Some(FinderItemLeft::Icon(USERS.into())),
-            SearchPaletteItem::Track { .. } => Some(FinderItemLeft::Icon(DISC.into())),
+            SearchPaletteItem::Track { album_id, .. } => {
+                if let Some(album_id) = album_id {
+                    Some(FinderItemLeft::Image(
+                        Self::thumbnail_path(*album_id as u32).into(),
+                    ))
+                } else {
+                    Some(FinderItemLeft::Icon(DISC.into()))
+                }
+            }
         }
     }
 
@@ -92,7 +102,8 @@ impl PaletteItem for SearchPaletteItem {
     fn right_content(&self, _cx: &mut App) -> Option<SharedString> {
         match self {
             SearchPaletteItem::Album { artist, .. } => Some(artist.clone().into()),
-            SearchPaletteItem::Artist { .. } | SearchPaletteItem::Track { .. } => None,
+            SearchPaletteItem::Track { artists, .. } => Some(artists.clone().into()),
+            SearchPaletteItem::Artist { .. } => None,
         }
     }
 
