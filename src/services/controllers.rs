@@ -197,6 +197,26 @@ pub fn register_pbc_event_handlers(cx: &mut App) {
     let metadata = models.metadata.clone();
     let albumart = models.albumart.clone();
 
+    let playback_info = cx.global::<PlaybackInfo>();
+    let position = playback_info.position.clone();
+    let duration = playback_info.duration.clone();
+    let track = playback_info.current_track.clone();
+    let volume = playback_info.volume.clone();
+    let repeat = playback_info.repeating.clone();
+    let state = playback_info.playback_state.clone();
+    let shuffle = playback_info.shuffling.clone();
+
+    cx.observe(&track, |e, cx| {
+        if let Some(track) = e.read(cx)
+            && let path = track.get_path().clone()
+            && let PbcHandle(tx, _) = cx.global()
+            && let Err(err) = tx.send(PbcEvent::NewFile(path))
+        {
+            error!(msg = ?err.0, "failed to send pbc event: {err}");
+        }
+    })
+    .detach();
+
     cx.observe(&metadata, |e, cx| {
         let meta = e.read(cx).clone();
         let PbcHandle(tx, _) = cx.global();
@@ -215,15 +235,6 @@ pub fn register_pbc_event_handlers(cx: &mut App) {
     })
     .detach();
 
-    let playback_info = cx.global::<PlaybackInfo>();
-    let position = playback_info.position.clone();
-    let duration = playback_info.duration.clone();
-    let track = playback_info.current_track.clone();
-    let volume = playback_info.volume.clone();
-    let repeat = playback_info.repeating.clone();
-    let state = playback_info.playback_state.clone();
-    let shuffle = playback_info.shuffling.clone();
-
     cx.observe(&position, |e, cx| {
         let &pos = e.read(cx);
         let PbcHandle(tx, _) = cx.global();
@@ -237,17 +248,6 @@ pub fn register_pbc_event_handlers(cx: &mut App) {
         let &dur = e.read(cx);
         let PbcHandle(tx, _) = cx.global();
         if let Err(err) = tx.send(PbcEvent::DurationChanged(dur)) {
-            error!(msg = ?err.0, "failed to send pbc event: {err}");
-        }
-    })
-    .detach();
-
-    cx.observe(&track, |e, cx| {
-        if let Some(track) = e.read(cx)
-            && let path = track.get_path().clone()
-            && let PbcHandle(tx, _) = cx.global()
-            && let Err(err) = tx.send(PbcEvent::NewFile(path))
-        {
             error!(msg = ?err.0, "failed to send pbc event: {err}");
         }
     })

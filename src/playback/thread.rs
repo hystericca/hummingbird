@@ -252,13 +252,14 @@ impl PlaybackThread {
         self.last_album_gain = None;
 
         let info = self.engine.open(path)?;
-        self.process_metadata_update();
 
         self.send_event(PlaybackEvent::SongChanged(path.to_owned()));
 
         self.send_event(PlaybackEvent::DurationChanged(
             info.duration_secs.unwrap_or(0),
         ));
+
+        self.process_metadata_update();
 
         self.update_ts(true);
 
