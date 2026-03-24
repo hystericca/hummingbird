@@ -496,42 +496,39 @@ pub fn setup_theme(cx: &mut App, data_dir: PathBuf) {
                 loop {
                     while let Ok(event) = rx.try_recv() {
                         match event {
-                            Ok(v) => {
-                                if event_affects_theme_options(&data_dir, &v.paths) {
-                                    let theme_options = discover_theme_options(&data_dir);
-                                    theme_options_model.update(cx, move |current, cx| {
-                                        if *current != theme_options {
-                                            *current = theme_options;
-                                        }
-                                        cx.notify();
-                                    });
-                                }
-
-                                let selected_theme = selected_theme_state.read().unwrap().clone();
-                                if !event_affects_selected_theme(
-                                    &data_dir,
-                                    selected_theme.as_deref(),
-                                    &v.paths,
-                                ) {
-                                    continue;
-                                }
-
-                                match v.kind {
-                                    notify::EventKind::Create(_)
-                                    | notify::EventKind::Modify(_)
-                                    | notify::EventKind::Remove(_) => {
-                                        info!("Theme changed, updating...");
-                                        let theme = load_selected_theme(
-                                            &data_dir,
-                                            selected_theme.as_deref(),
-                                        );
-                                        theme_transmitter.update(cx, move |_, m| {
-                                            m.emit(theme);
+                            Ok(v) => match v.kind {
+                                notify::EventKind::Create(_)
+                                | notify::EventKind::Modify(_)
+                                | notify::EventKind::Remove(_) => {
+                                    if event_affects_theme_options(&data_dir, &v.paths) {
+                                        let theme_options = discover_theme_options(&data_dir);
+                                        theme_options_model.update(cx, move |current, cx| {
+                                            if *current != theme_options {
+                                                *current = theme_options;
+                                            }
+                                            cx.notify();
                                         });
                                     }
-                                    _ => (),
+
+                                    let selected_theme =
+                                        selected_theme_state.read().unwrap().clone();
+                                    if !event_affects_selected_theme(
+                                        &data_dir,
+                                        selected_theme.as_deref(),
+                                        &v.paths,
+                                    ) {
+                                        continue;
+                                    }
+
+                                    info!("Theme changed, updating...");
+                                    let theme =
+                                        load_selected_theme(&data_dir, selected_theme.as_deref());
+                                    theme_transmitter.update(cx, move |_, m| {
+                                        m.emit(theme);
+                                    });
                                 }
-                            }
+                                _ => (),
+                            },
                             Err(e) => error!("error occurred while watching themes: {:?}", e),
                         }
                     }
