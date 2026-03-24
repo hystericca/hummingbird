@@ -210,6 +210,7 @@ impl Render for TrackItem {
                                         .border_color(theme.border_color)
                                         .mt(px(18.0))
                                         .pb(px(6.0))
+                                        .text_ellipsis()
                                         .when_some(self.track.disc_number, |this, num| {
                                             if self.vinyl_numbering {
                                                 let side = (b'A' + (num - 1) as u8) as char;
