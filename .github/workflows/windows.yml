@@ -28,12 +28,15 @@ jobs:
       - name: Update Inno Setup
         run: choco upgrade innosetup -y
       - name: Install minisign
+        shell: pwsh
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
           Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
           scoop install minisign
+          "$env:USERPROFILE\scoop\shims" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Try minisign
-        run: \& "$env:USERPROFILE\scoop\shims\minisign.exe" -v
+        shell: pwsh
+        run: minisign -v
       - name: Update rust
         run: rustup update
       - name: Set ENV
@@ -64,10 +67,10 @@ jobs:
           Set-Content -Path minisign.key -Value $env:MINISIGN_PRIV_KEY -NoNewline
       - name: Sign portable binary
         shell: pwsh
-        run: \& "$env:USERPROFILE\scoop\shims\minisign.exe" -S -s minisign.key -m target/bundle/${{ env.TARGET_TRIPLE }}/release/Hummingbird-${{ env.ARCH }}.exe
+        run: minisign -S -s minisign.key -m target/bundle/${{ env.TARGET_TRIPLE }}/release/Hummingbird-${{ env.ARCH }}.exe
       - name: Sign installer
         shell: pwsh
-        run: \& "$env:USERPROFILE\scoop\shims\minisign.exe" -S -s minisign.key -m package/inno/Output/HummingbirdSetup_${{ env.ARCH }}.exe
+        run: minisign -S -s minisign.key -m package/inno/Output/HummingbirdSetup_${{ env.ARCH }}.exe
       - uses: actions/upload-artifact@v4
         with:
           name: hummingbird-${{ env.ARCH }}.exe
