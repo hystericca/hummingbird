@@ -14,6 +14,7 @@ use gpui::{App, Global};
 use rustc_hash::{FxHashMap, FxHashSet};
 use sqlx::SqlitePool;
 use tokio::{
+    fs::try_exists,
     sync::{
         Mutex,
         mpsc::{Receiver, Sender, UnboundedReceiver, UnboundedSender, channel, unbounded_channel},
@@ -27,7 +28,7 @@ use crate::{
         database::{AlbumCacheKey, AlbumPathCacheKey, update_metadata},
         decode::{FileInformation, build_provider_table, read_metadata_for_path},
         discover::{cleanup_removed_directories, cleanup_with_exclusions, discover},
-        record::{SCAN_VERSION, ScanRecord, load_scan_record, write_scan_record},
+        record::{SCAN_VERSION, ScanRecord, load_scan_record, write_checkpoint, write_scan_record},
     },
     paths,
     settings::scan::{MissingFolderPolicy, ScanSettings},
@@ -191,14 +192,15 @@ async fn run_scanner(
     event_tx: UnboundedSender<ScanEvent>,
 ) {
     let directory = paths::data_dir();
-    if !tokio::fs::try_exists(&directory).await.unwrap_or_default() {
+    if !try_exists(&directory).await.unwrap_or_default() {
         tokio::fs::create_dir(&directory)
             .await
             .expect("couldn't create data directory");
     }
     let scan_record_path = directory.join("scan_record.hsr");
+    let checkpoint_path = directory.join("scan_record_checkpoint.hsr");
     let legacy_scan_record_path = directory.join("scan_record.json");
-    let mut scan_record: ScanRecord = if tokio::fs::try_exists(&legacy_scan_record_path)
+    let mut scan_record: ScanRecord = if try_exists(&legacy_scan_record_path)
         .await
         .unwrap_or_default()
     {
@@ -248,6 +250,32 @@ async fn run_scanner(
         let scan_record_path = scan_record_path.clone();
         load_scan_record(&scan_record_path).await
     };
+
+    // attempt to recover checkpoint data from a previous crashed scan
+    if try_exists(&checkpoint_path).await.unwrap_or(false) {
+        let checkpoint = load_scan_record(&checkpoint_path).await;
+        let base_dirs: FxHashSet<Utf8PathBuf> = scan_record.directories.iter().cloned().collect();
+        for dir in checkpoint.directories {
+            if !base_dirs.contains(&dir) {
+                scan_record.directories.push(dir);
+            }
+        }
+        let added = checkpoint.records.len();
+        for (path, timestamp) in checkpoint.records {
+            scan_record.records.insert(path, timestamp);
+        }
+        if let Err(e) = tokio::fs::remove_file(&checkpoint_path).await {
+            warn!(
+                "Failed to delete scan record checkpoint after merging: {:?}",
+                e
+            );
+        }
+        info!(
+            "Merged scan record checkpoint ({} entries, {} total)",
+            added,
+            scan_record.records.len()
+        );
+    }
 
     loop {
         let mut is_force = loop {
@@ -317,6 +345,7 @@ async fn run_scanner(
         }
 
         scan_record.directories = scan_settings.paths.clone();
+        let checkpoint_dirs = scan_record.directories.clone();
 
         if is_force {
             scan_record.records.clear();
@@ -401,6 +430,9 @@ async fn run_scanner(
         let mut discovery_complete = false;
         let mut discovered_total: u64 = 0;
         let mut pending_commit: Vec<(Utf8PathBuf, SystemTime)> = Vec::with_capacity(BATCH_SIZE);
+        let scan_checkpoint: Arc<Mutex<FxHashMap<Utf8PathBuf, SystemTime>>> =
+            Arc::new(Mutex::new(FxHashMap::default()));
+        let mut checkpoint_handle: Option<tokio::task::JoinHandle<()>> = None;
 
         let mut discover_handle = discover_handle;
 
@@ -420,6 +452,7 @@ async fn run_scanner(
 
                 // if a decode failed that file still needs to be in the scan record
                 Some((path, timestamp)) = decode_fail_rx.recv() => {
+                    scan_checkpoint.lock().await.insert(path.clone(), timestamp);
                     let mut sr = scan_record_shared.lock().await;
                     sr.records.insert(path, timestamp);
                 }
@@ -501,10 +534,30 @@ async fn run_scanner(
                             error!("Failed to commit scan batch transaction: {:?}", e);
                             pending_commit.clear();
                         } else {
+                            let mut ckpt = scan_checkpoint.lock().await;
+                            for (p, ts) in &pending_commit {
+                                ckpt.insert(p.clone(), *ts);
+                            }
+
+                            drop(ckpt);
+
                             let mut sr = scan_record_shared.lock().await;
                             for (p, ts) in pending_commit.drain(..) {
                                 sr.records.insert(p, ts);
                             }
+                        }
+
+                        // write checkpoint if no write is in progress
+                        if checkpoint_handle.as_ref().is_none_or(|h| h.is_finished()) {
+                            if let Some(handle) = checkpoint_handle.take() {
+                                let _ = handle.await;
+                            }
+                            let checkpoint_arc = Arc::clone(&scan_checkpoint);
+                            let dirs = checkpoint_dirs.clone();
+                            let path = checkpoint_path.clone();
+                            checkpoint_handle = Some(tokio::spawn(async move {
+                                write_checkpoint(checkpoint_arc, dirs, &path).await;
+                            }));
                         }
                         tx = pool.begin().await.expect("could not begin new scan transaction");
                         items_in_tx = 0;
@@ -531,6 +584,7 @@ async fn run_scanner(
 
         // drain remaining decode failures
         while let Ok((path, timestamp)) = decode_fail_rx.try_recv() {
+            scan_checkpoint.lock().await.insert(path.clone(), timestamp);
             let mut sr = scan_record_shared.lock().await;
             sr.records.insert(path, timestamp);
         }
@@ -544,11 +598,23 @@ async fn run_scanner(
             duration.as_secs_f32()
         );
 
+        if let Some(handle) = checkpoint_handle.take() {
+            let _ = handle.await;
+        }
+
         scan_record = Arc::try_unwrap(scan_record_shared)
             .expect("scan_record Arc still has multiple owners")
             .into_inner();
 
         write_scan_record(&scan_record, &scan_record_path).await;
+
+        // remove checkpoint file after successful write
+        if let Err(e) = tokio::fs::remove_file(&checkpoint_path).await
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!("Failed to delete scan record checkpoint: {:?}", e);
+        }
+
         let _ = event_tx.send(ScanEvent::ScanCompleteIdle);
     }
 }

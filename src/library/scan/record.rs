@@ -1,11 +1,14 @@
-use std::{io::ErrorKind, path::Path, time::SystemTime};
+use std::{io::ErrorKind, path::Path, sync::Arc, time::SystemTime};
 
 use async_compression::tokio::bufread::ZlibDecoder;
 use async_compression::tokio::write::ZlibEncoder;
 use camino::Utf8PathBuf;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
+    sync::Mutex,
+};
 use tracing::{error, info};
 
 /// The version of the scanning process. If this version number is incremented, a re-scan of all
@@ -63,11 +66,78 @@ pub async fn load_scan_record(path: &Path) -> ScanRecord {
     }
 }
 
+#[derive(Serialize)]
+struct ScanRecordForWrite<'a> {
+    version: u16,
+    records: &'a FxHashMap<Utf8PathBuf, SystemTime>,
+    directories: &'a [Utf8PathBuf],
+}
+
+pub async fn write_checkpoint(
+    checkpoint: Arc<Mutex<FxHashMap<Utf8PathBuf, SystemTime>>>,
+    directories: Vec<Utf8PathBuf>,
+    path: &Path,
+) {
+    let tmp_path = path.with_extension("hsr.tmp");
+
+    let serialized = {
+        let guard = checkpoint.lock().await;
+        let view = ScanRecordForWrite {
+            version: SCAN_VERSION,
+            records: &*guard,
+            directories: &directories,
+        };
+        postcard::to_allocvec(&view)
+    };
+
+    let data = match serialized {
+        Ok(d) => d,
+        Err(e) => {
+            error!("Could not serialize scan record checkpoint: {:?}", e);
+            return;
+        }
+    };
+
+    let mut file = match tokio::fs::File::create(&tmp_path)
+        .await
+        .map(ZlibEncoder::new)
+    {
+        Ok(f) => f,
+        Err(e) => {
+            error!("Could not create scan record checkpoint file: {:?}", e);
+            return;
+        }
+    };
+
+    if let Err(e) = file.write_all(&data).await {
+        error!("Could not write scan record checkpoint: {:?}", e);
+        let _ = tokio::fs::remove_file(&tmp_path).await;
+        return;
+    }
+    if let Err(e) = file.shutdown().await {
+        error!("Could not close scan record checkpoint: {:?}", e);
+        let _ = tokio::fs::remove_file(&tmp_path).await;
+        return;
+    }
+    if let Err(e) = tokio::fs::rename(&tmp_path, path).await {
+        error!(
+            "Could not rename scan record checkpoint into place: {:?}",
+            e
+        );
+        let _ = tokio::fs::remove_file(&tmp_path).await;
+    }
+}
+
 pub async fn write_scan_record(scan_record: &ScanRecord, path: &Path) {
-    let mut file = match tokio::fs::File::create(path).await.map(ZlibEncoder::new) {
+    let tmp_path = path.with_extension("hsr.tmp");
+
+    let mut file = match tokio::fs::File::create(&tmp_path)
+        .await
+        .map(ZlibEncoder::new)
+    {
         Ok(file) => file,
         Err(e) => {
-            error!("Could not create scan record file: {:?}", e);
+            error!("Could not create temporary scan record file: {:?}", e);
             error!("Scan record will not be saved, this may cause rescans on restart");
             return;
         }
@@ -78,12 +148,21 @@ pub async fn write_scan_record(scan_record: &ScanRecord, path: &Path) {
             if let Err(e) = file.write_all(&data).await {
                 error!("Could not write scan record: {:?}", e);
                 error!("Scan record will not be saved, this may cause rescans on restart");
+                let _ = tokio::fs::remove_file(&tmp_path).await;
                 return;
             }
 
             if let Err(e) = file.shutdown().await {
                 error!("Could not close scan record: {:?}", e);
                 error!("Scan record will not be saved, this may cause rescans on restart");
+                let _ = tokio::fs::remove_file(&tmp_path).await;
+                return;
+            }
+
+            if let Err(e) = tokio::fs::rename(&tmp_path, path).await {
+                error!("Could not rename scan record into place: {:?}", e);
+                error!("Scan record will not be saved, this may cause rescans on restart");
+                let _ = tokio::fs::remove_file(&tmp_path).await;
                 return;
             }
 
@@ -92,6 +171,7 @@ pub async fn write_scan_record(scan_record: &ScanRecord, path: &Path) {
         Err(e) => {
             error!("Could not serialize scan record: {:?}", e);
             error!("Scan record will not be saved, this may cause rescans on restart");
+            let _ = tokio::fs::remove_file(&tmp_path).await;
         }
     }
 }
