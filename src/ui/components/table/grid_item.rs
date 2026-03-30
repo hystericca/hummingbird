@@ -7,8 +7,11 @@ use super::{
     table_data::{Column, GridContext, TableData, TableDragData},
 };
 use crate::ui::{
-    components::context::context,
-    components::drag_drop::{AlbumDragData, DragPreview, TrackDragData},
+    components::{
+        context::context,
+        drag_drop::{AlbumDragData, DragPreview, TrackDragData},
+        managed_image::{ManagedImageKey, managed_image},
+    },
     theme::Theme,
 };
 
@@ -22,7 +25,7 @@ where
     grid_context: GridContext,
     row: Arc<T>,
     id: ElementId,
-    image_path: Option<SharedString>,
+    image_key: Option<ManagedImageKey>,
     primary_text: SharedString,
     secondary_text: Option<SharedString>,
     on_select: Option<OnSelectHandler<T, C>>,
@@ -44,7 +47,7 @@ where
         let row = T::get_row(cx, id.clone()).ok().flatten()?;
 
         let element_id = row.get_element_id().into();
-        let image_path = row.get_full_image_path().or_else(|| row.get_image_path());
+        let image_key = row.get_full_image_key();
         let is_available = row.is_available(cx);
         let grid_content = row.get_grid_content_for(cx, context);
         let (primary_text, secondary_text) = grid_content.unwrap_or(("".into(), None));
@@ -54,7 +57,7 @@ where
             grid_context: context,
             row,
             id: element_id,
-            image_path,
+            image_key,
             primary_text,
             secondary_text,
             on_select,
@@ -145,9 +148,9 @@ where
             .bg(theme.album_art_background)
             .overflow_hidden();
 
-        if let Some(image) = self.image_path.clone() {
+        if let Some(image) = self.image_key {
             img_container = img_container.child(
-                img(image)
+                managed_image((self.id.clone(), "grid_image"), image)
                     .w_full()
                     .h_full()
                     .rounded(px(6.0))

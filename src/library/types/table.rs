@@ -18,6 +18,7 @@ use crate::{
         },
         components::{
             drag_drop::{AlbumDragData, TrackDragData},
+            managed_image::ManagedImageKey,
             table::table_data::{Column, GridContext, TableData, TableDragData, TableSort},
         },
         library::context_menus::{
@@ -182,8 +183,8 @@ impl TableData<AlbumColumn> for Album {
         Some(format!("!db://album/{}/thumb", self.id).into())
     }
 
-    fn get_full_image_path(&self) -> Option<SharedString> {
-        Some(format!("!db://album/{}/full", self.id).into())
+    fn get_full_image_key(&self) -> Option<ManagedImageKey> {
+        Some(ManagedImageKey::Album(self.id))
     }
 
     fn has_images() -> bool {
@@ -442,7 +443,7 @@ impl TableData<TrackColumn> for Track {
         None
     }
 
-    fn get_full_image_path(&self) -> Option<SharedString> {
+    fn get_full_image_key(&self) -> Option<ManagedImageKey> {
         None
     }
 
@@ -605,7 +606,7 @@ impl TableData<ArtistColumn> for ArtistWithCounts {
         None
     }
 
-    fn get_full_image_path(&self) -> Option<SharedString> {
+    fn get_full_image_key(&self) -> Option<ManagedImageKey> {
         None
     }
 

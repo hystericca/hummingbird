@@ -8,6 +8,7 @@ pub mod icons;
 pub mod input;
 pub mod label;
 pub mod labeled_slider;
+pub mod managed_image;
 pub mod menu;
 pub mod menu_bar;
 pub mod menus_builder;

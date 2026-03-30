@@ -4,7 +4,10 @@ use gpui::{AnyElement, App, ElementId, SharedString, Window};
 use indexmap::IndexMap;
 use rustc_hash::FxBuildHasher;
 
-use crate::ui::components::drag_drop::{AlbumDragData, TrackDragData};
+use crate::ui::components::{
+    drag_drop::{AlbumDragData, TrackDragData},
+    managed_image::ManagedImageKey,
+};
 
 #[derive(Clone, Debug)]
 pub enum TableDragData {
@@ -99,8 +102,8 @@ where
     /// Retrieves the associated image for the row.
     fn get_image_path(&self) -> Option<SharedString>;
 
-    /// Retrieves the full-quality image for the row.
-    fn get_full_image_path(&self) -> Option<SharedString>;
+    /// Retrieves the full-quality key for the row, for use with `managed_image`.
+    fn get_full_image_key(&self) -> Option<ManagedImageKey>;
 
     /// Retrieves the default column widths for the table.
     fn default_columns() -> IndexMap<C, f32, FxBuildHasher>;
