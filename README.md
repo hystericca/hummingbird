@@ -25,7 +25,11 @@ design standard.
   - Codecs
   - Scrobble services
   - Metadata services
+  - Cloud storage services
 - Improved library management
+- Parametric equalizer
+- Cloud storage support
+- Full keyboard navigation
 
 # Usage
 
@@ -55,7 +59,7 @@ currently ongoing.
 ## Unstable Builds
 The latest commit is built using Github Actions and uploaded to the
 [latest](https://github.com/143mailliw/hummingbird/releases/tag/latest) tag
-automatically. Windows installers aren't available for unstable builds.
+automatically.
 
 Official builds are signed with `minisign`. The signature is attached to the release and must be downloaded seperately and placed next to the binary you are attempting to verify. Verify with:
 ```
