@@ -1,7 +1,7 @@
 {
   "ABOUT": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:78",
+    "definedIn": "src/ui/global_actions.rs:79",
     "plural": false,
     "description": null
   },
@@ -217,7 +217,7 @@
   },
   "CANCEL": {
     "context": "playlists.rs",
-    "definedIn": "src/ui/library/sidebar/playlists.rs:411",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:422",
     "plural": false,
     "description": null
   },
@@ -295,7 +295,7 @@
   },
   "COMMAND_PALETTE": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:114",
+    "definedIn": "src/ui/global_actions.rs:115",
     "plural": false,
     "description": null
   },
@@ -307,7 +307,7 @@
   },
   "CREATE": {
     "context": "playlists.rs",
-    "definedIn": "src/ui/library/sidebar/playlists.rs:420",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:431",
     "plural": false,
     "description": null
   },
@@ -319,19 +319,25 @@
   },
   "DELETE_PLAYLIST": {
     "context": "playlists.rs",
-    "definedIn": "src/ui/library/sidebar/playlists.rs:274",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:289",
     "plural": false,
     "description": null
   },
   "DISCORD": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:151",
+    "definedIn": "src/ui/global_actions.rs:157",
     "plural": false,
     "description": null
   },
   "DROPDOWN_PLACEHOLDER": {
     "context": "dropdown.rs",
     "definedIn": "src/ui/components/dropdown.rs:95",
+    "plural": false,
+    "description": null
+  },
+  "EXPORT_PLAYLIST": {
+    "context": "playlists.rs",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:277",
     "plural": false,
     "description": null
   },
@@ -343,7 +349,7 @@
   },
   "GITHUB_ISSUES": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:146",
+    "definedIn": "src/ui/global_actions.rs:152",
     "plural": false,
     "description": null
   },
@@ -361,19 +367,19 @@
   },
   "HELP": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:144",
+    "definedIn": "src/ui/global_actions.rs:150",
     "plural": false,
     "description": null
   },
   "HIDE": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:95",
+    "definedIn": "src/ui/global_actions.rs:96",
     "plural": false,
     "description": null
   },
   "HIDE_OTHERS": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:97",
+    "definedIn": "src/ui/global_actions.rs:98",
     "plural": false,
     "description": null
   },
@@ -481,31 +487,31 @@
   },
   "LIBRARY_FORCE_RESCAN": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:130",
+    "definedIn": "src/ui/global_actions.rs:131",
     "plural": false,
     "description": null
   },
   "LIBRARY_SCAN": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:128",
+    "definedIn": "src/ui/global_actions.rs:129",
     "plural": false,
     "description": null
   },
   "LIBRARY_SHUFFLE_ALL": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:123",
+    "definedIn": "src/ui/global_actions.rs:124",
     "plural": false,
     "description": null
   },
   "LIKED_SONGS": {
     "context": "playlists.rs",
-    "definedIn": "src/ui/library/sidebar/playlists.rs:187",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:188",
     "plural": false,
     "description": null
   },
   "NEW_PLAYLIST": {
     "context": "playlists.rs",
-    "definedIn": "src/ui/library/sidebar/playlists.rs:369",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:380",
     "plural": false,
     "description": null
   },
@@ -523,7 +529,7 @@
   },
   "PATREON": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:164",
+    "definedIn": "src/ui/global_actions.rs:170",
     "plural": false,
     "description": null
   },
@@ -589,7 +595,7 @@
   },
   "PLAYLIST_TRACK_COUNT": {
     "context": "playlists.rs",
-    "definedIn": "src/ui/library/sidebar/playlists.rs:223",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:224",
     "plural": true,
     "description": null
   },
@@ -613,7 +619,7 @@
   },
   "QUIT": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:103",
+    "definedIn": "src/ui/global_actions.rs:104",
     "plural": false,
     "description": null
   },
@@ -661,13 +667,13 @@
   },
   "RENAME": {
     "context": "playlists.rs",
-    "definedIn": "src/ui/library/sidebar/playlists.rs:345",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:359",
     "plural": false,
     "description": null
   },
   "RENAME_PLAYLIST": {
     "context": "playlists.rs",
-    "definedIn": "src/ui/library/sidebar/playlists.rs:257",
+    "definedIn": "src/ui/library/sidebar/playlists.rs:259",
     "plural": false,
     "description": null
   },
@@ -871,7 +877,7 @@
   },
   "SEARCH": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:118",
+    "definedIn": "src/ui/global_actions.rs:119",
     "plural": false,
     "description": null
   },
@@ -889,7 +895,7 @@
   },
   "SHOW_ALL": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:101",
+    "definedIn": "src/ui/global_actions.rs:102",
     "plural": false,
     "description": null
   },
@@ -1057,13 +1063,13 @@
   },
   "VIEW": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:109",
+    "definedIn": "src/ui/global_actions.rs:110",
     "plural": false,
     "description": "The View menu. Must *exactly* match the text required by macOS."
   },
   "WINDOW": {
     "context": "global_actions.rs",
-    "definedIn": "src/ui/global_actions.rs:137",
+    "definedIn": "src/ui/global_actions.rs:143",
     "plural": false,
     "description": "The Window menu. Must *exactly* match the text required by macOS."
   }
