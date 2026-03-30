@@ -72,6 +72,7 @@ pub struct Models {
     pub liked_tracks_sort_method: Entity<LikedTrackSortMethod>,
     pub sidebar_collapsed: Entity<bool>,
     pub lyrics_height: Entity<Pixels>,
+    #[cfg(feature = "update")]
     pub pending_update: Entity<Option<PathBuf>>,
 }
 
@@ -352,6 +353,7 @@ pub fn build_models(
         }
     });
 
+    #[cfg(feature = "update")]
     let pending_update = cx.new(|_| None);
 
     cx.set_global(Models {
@@ -372,6 +374,7 @@ pub fn build_models(
         liked_tracks_sort_method,
         sidebar_collapsed,
         lyrics_height,
+        #[cfg(feature = "update")]
         pending_update,
     });
 
